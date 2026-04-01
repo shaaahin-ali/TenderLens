@@ -2,106 +2,208 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Tender Compliance Validator</title>
+  <title>Tender Compliance Validator (Free Edition)</title>
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-    h1 { font-size: 1.5rem; margin-bottom: 4px; }
+    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; line-height: 1.5; color: #333; }
+    h1 { font-size: 1.8rem; margin-bottom: 4px; color: #111; }
     p.sub { color: #666; margin-bottom: 24px; }
+    
+    .card { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .card h2 { margin-top: 0; font-size: 1.25rem; }
+    
     label { display: block; font-weight: bold; margin-bottom: 6px; }
     input[type="file"] { display: block; margin-bottom: 12px; }
-    button { padding: 8px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button { padding: 8px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #status { margin-top: 12px; color: #555; }
-    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
-    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; }
+    
+    .status { margin-top: 12px; color: #555; font-style: italic; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
     th { background: #f8fafc; font-weight: 600; }
-    #results-section { display: none; }
+    
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+    .b-met { background: #dcfce7; color: #166534; }
+    .b-partial { background: #fef9c3; color: #854d0e; }
+    .b-missing { background: #fee2e2; color: #991b1b; }
+    
+    .hidden { display: none; }
+    .excerpt { font-size: 0.8rem; color: #555; background: #f8fafc; padding: 4px; border-radius: 4px; margin-top: 4px; }
+    .stats { display: flex; gap: 16px; margin-bottom: 16px; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <h1>📋 Tender Compliance Validator</h1>
-  <p class="sub">Upload an RFP PDF to extract all mandatory requirements automatically.</p>
+  <h1>📋 Tender Compliance Validator (Free Edition)</h1>
+  <p class="sub">100% offline workflow. Extracts requirements using keywords and matches meaning using local embeddings.</p>
 
-  <label for="rfp-file">Select RFP PDF:</label>
-  <input type="file" id="rfp-file" accept=".pdf" />
-  <button id="upload-btn" disabled>Extract Requirements</button>
+  <!-- Step 1: RFP -->
+  <div class="card" id="step1">
+    <h2>Step 1: Upload RFP</h2>
+    <label for="rfp-file">Select RFP PDF:</label>
+    <input type="file" id="rfp-file" accept=".pdf" />
+    <button id="upload-btn" disabled>Extract Requirements</button>
+    <p id="rfp-status" class="status"></p>
 
-  <p id="status"></p>
+    <div id="rfp-results" class="hidden">
+      <h3 id="rfp-heading"></h3>
+      <table>
+        <thead>
+          <tr>
+            <th width="5%">#</th>
+            <th width="65%">Requirement</th>
+            <th width="15%">Category</th>
+            <th width="15%">Trigger Word</th>
+          </tr>
+        </thead>
+        <tbody id="rfp-body"></tbody>
+      </table>
+    </div>
+  </div>
 
-  <div id="results-section">
-    <h2 id="results-heading"></h2>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Requirement</th>
-          <th>Category</th>
-          <th>Keyword</th>
-        </tr>
-      </thead>
-      <tbody id="results-body"></tbody>
-    </table>
+  <!-- Step 2: Proposal (Hidden until RFP is done) -->
+  <div class="card hidden" id="step2">
+    <h2>Step 2: Upload Vendor Proposal</h2>
+    <label for="prop-file">Select Proposal PDF:</label>
+    <input type="file" id="prop-file" accept=".pdf" />
+    <button id="validate-btn" disabled>Run Semantic Matching</button>
+    <p id="prop-status" class="status"></p>
+    
+    <div id="prop-results" class="hidden">
+      <h3>Validation Results</h3>
+      
+      <div class="stats" id="stats-bar"></div>
+      
+      <table>
+        <thead>
+          <tr>
+            <th width="5%">#</th>
+            <th width="40%">Requirement</th>
+            <th width="15%">Status</th>
+            <th width="10%">Confidence</th>
+            <th width="30%">Best Match Found in Proposal</th>
+          </tr>
+        </thead>
+        <tbody id="prop-body"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
-    const fileInput = document.getElementById("rfp-file");
-    const uploadBtn = document.getElementById("upload-btn");
-    const status    = document.getElementById("status");
+    // --- Step 1 UI Logic ---
+    const rfpInput = document.getElementById("rfp-file");
+    const rfpBtn = document.getElementById("upload-btn");
+    const rfpStatus = document.getElementById("rfp-status");
 
-    // Enable the button only when a file is chosen
-    fileInput.addEventListener("change", () => {
-      uploadBtn.disabled = !fileInput.files.length;
+    rfpInput.addEventListener("change", () => {
+      rfpBtn.disabled = !rfpInput.files.length;
     });
 
-    uploadBtn.addEventListener("click", async () => {
-      const file = fileInput.files[0];
+    rfpBtn.addEventListener("click", async () => {
+      const file = rfpInput.files[0];
       if (!file) return;
 
-      uploadBtn.disabled = true;
-      status.textContent = "Uploading and extracting... please wait.";
+      rfpBtn.disabled = true;
+      rfpStatus.textContent = "Scanning document for keywords...";
 
       const form = new FormData();
       form.append("file", file);
 
       try {
-        const res  = await fetch("/upload-rfp", { method: "POST", body: form });
+        const res = await fetch("/upload-rfp", { method: "POST", body: form });
         const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.detail || "Error");
 
-        if (!res.ok) {
-          status.textContent = "Error: " + (data.detail || "Something went wrong.");
-          return;
-        }
+        rfpStatus.textContent = "";
+        
+        // Show the results table
+        document.getElementById("rfp-results").classList.remove("hidden");
+        document.getElementById("rfp-heading").textContent = `Found ${data.total} mandatory requirements`;
+        
+        const tbody = document.getElementById("rfp-body");
+        tbody.innerHTML = "";
+        data.requirements.forEach(req => {
+          tbody.innerHTML += `<tr>
+            <td>${req.id}</td>
+            <td>${req.requirement}</td>
+            <td>${req.category || 'General'}</td>
+            <td><code>${req.keyword}</code></td>
+          </tr>`;
+        });
 
-        status.textContent = "";
-        showResults(data);
-
+        // Unhide step 2
+        document.getElementById("step2").classList.remove("hidden");
+        
       } catch (err) {
-        status.textContent = "Network error: " + err.message;
+        rfpStatus.textContent = "Network error: " + err.message;
       } finally {
-        uploadBtn.disabled = false;
+        rfpBtn.disabled = false;
       }
     });
 
-    function showResults(data) {
-      document.getElementById("results-section").style.display = "block";
-      document.getElementById("results-heading").textContent =
-        `Found ${data.total} requirements`;
+    // --- Step 2 UI Logic ---
+    const propInput = document.getElementById("prop-file");
+    const propBtn = document.getElementById("validate-btn");
+    const propStatus = document.getElementById("prop-status");
 
-      const tbody = document.getElementById("results-body");
-      tbody.innerHTML = "";
+    propInput.addEventListener("change", () => {
+      propBtn.disabled = !propInput.files.length;
+    });
 
-      data.requirements.forEach((req, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${i + 1}</td>
-          <td>${req.requirement}</td>
-          <td>${req.category || '-'}</td>
-          <td><code>${req.keyword}</code></td>
+    propBtn.addEventListener("click", async () => {
+      const file = propInput.files[0];
+      if (!file) return;
+
+      propBtn.disabled = true;
+      propStatus.innerHTML = "Processing vendor proposal...<br><i>(First run takes 10-15s to load the offline AI model)</i>";
+
+      const form = new FormData();
+      form.append("file", file);
+
+      try {
+        const res = await fetch("/validate", { method: "POST", body: form });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.detail || "Error");
+
+        propStatus.textContent = "";
+
+        // Render stats
+        document.getElementById("prop-results").classList.remove("hidden");
+        document.getElementById("stats-bar").innerHTML = `
+          <div>Total: ${data.summary.total}</div>
+          <div style="color: #166534;">✅ Met: ${data.summary.met}</div>
+          <div style="color: #854d0e;">⚠️ Partial: ${data.summary.partial}</div>
+          <div style="color: #991b1b;">❌ Missing: ${data.summary.not_met}</div>
         `;
-        tbody.appendChild(tr);
-      });
-    }
+
+        // Render table
+        const tbody = document.getElementById("prop-body");
+        tbody.innerHTML = "";
+        
+        data.results.forEach(r => {
+          let badge = `<span class="badge b-missing">Missing</span>`;
+          if (r.verdict === "MET") badge = `<span class="badge b-met">Met</span>`;
+          if (r.verdict === "PARTIAL") badge = `<span class="badge b-partial">Partial</span>`;
+          
+          let excerptHtml = r.best_match_excerpt ? `<div class="excerpt">"${r.best_match_excerpt}"</div>` : `<span style="color:#aaa;">No related text found.</span>`;
+          
+          tbody.innerHTML += `<tr>
+            <td>${r.id}</td>
+            <td>${r.requirement}</td>
+            <td>${badge}</td>
+            <td>${r.confidence}%</td>
+            <td>${excerptHtml}</td>
+          </tr>`;
+        });
+        
+      } catch (err) {
+        propStatus.textContent = "Network error: " + err.message;
+      } finally {
+        propBtn.disabled = false;
+      }
+    });
   </script>
 
 </body>
