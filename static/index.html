@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tender Compliance Validator</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 1.5rem; margin-bottom: 4px; }
+    p.sub { color: #666; margin-bottom: 24px; }
+    label { display: block; font-weight: bold; margin-bottom: 6px; }
+    input[type="file"] { display: block; margin-bottom: 12px; }
+    button { padding: 8px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { margin-top: 12px; color: #555; }
+    table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem; }
+    th { background: #f8fafc; font-weight: 600; }
+    #results-section { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>📋 Tender Compliance Validator</h1>
+  <p class="sub">Upload an RFP PDF to extract all mandatory requirements automatically.</p>
+
+  <label for="rfp-file">Select RFP PDF:</label>
+  <input type="file" id="rfp-file" accept=".pdf" />
+  <button id="upload-btn" disabled>Extract Requirements</button>
+
+  <p id="status"></p>
+
+  <div id="results-section">
+    <h2 id="results-heading"></h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Requirement</th>
+          <th>Keyword</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById("rfp-file");
+    const uploadBtn = document.getElementById("upload-btn");
+    const status    = document.getElementById("status");
+
+    // Enable the button only when a file is chosen
+    fileInput.addEventListener("change", () => {
+      uploadBtn.disabled = !fileInput.files.length;
+    });
+
+    uploadBtn.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      uploadBtn.disabled = true;
+      status.textContent = "Uploading and extracting... please wait.";
+
+      const form = new FormData();
+      form.append("file", file);
+
+      try {
+        const res  = await fetch("/upload-rfp", { method: "POST", body: form });
+        const data = await res.json();
+
+        if (!res.ok) {
+          status.textContent = "Error: " + (data.detail || "Something went wrong.");
+          return;
+        }
+
+        status.textContent = "";
+        showResults(data);
+
+      } catch (err) {
+        status.textContent = "Network error: " + err.message;
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+
+    function showResults(data) {
+      document.getElementById("results-section").style.display = "block";
+      document.getElementById("results-heading").textContent =
+        `Found ${data.total} requirements`;
+
+      const tbody = document.getElementById("results-body");
+      tbody.innerHTML = "";
+
+      data.requirements.forEach((req, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${req.requirement}</td>
+          <td><code>${req.keyword}</code></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+
+</body>
+</html>
