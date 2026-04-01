@@ -36,6 +36,7 @@
         <tr>
           <th>#</th>
           <th>Requirement</th>
+          <th>Category</th>
           <th>Keyword</th>
         </tr>
       </thead>
@@ -95,6 +96,7 @@
         tr.innerHTML = `
           <td>${i + 1}</td>
           <td>${req.requirement}</td>
+          <td>${req.category || '-'}</td>
           <td><code>${req.keyword}</code></td>
         `;
         tbody.appendChild(tr);
