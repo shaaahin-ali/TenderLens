@@ -2,7 +2,7 @@
 
 A tool to extract mandatory requirements from RFP (Request for Proposal) documents.
 
-> This is Checkpoint 1 — basic PDF upload and keyword extraction.
+> Checkpoint 1 — basic PDF upload and keyword extraction.
 > More features (AI extraction, semantic matching) are coming next.
 
 ---
@@ -23,12 +23,18 @@ A tool to extract mandatory requirements from RFP (Request for Proposal) documen
 pip install -r requirements.txt
 ```
 
-**2. Run the server**
+**2. Set your OpenAI API key** (needed from Checkpoint 2 onwards)
+```bash
+# Windows PowerShell
+$env:OPENAI_API_KEY = "sk-..."
+```
+
+**3. Run the server**
 ```bash
 uvicorn app:app --reload
 ```
 
-**3. Open in browser**
+**4. Open in browser**
 ```
 http://localhost:8000
 ```
@@ -46,13 +52,13 @@ A government tender document works great, but even a Word doc exported to PDF wi
 
 ```
 tender-validator/
-├── app.py          ← FastAPI server
-├── extractor.py    ← Keyword-based requirement extraction
-├── matcher.py      ← Placeholder for future semantic matching
-├── utils.py        ← PDF reading
-├── data/           ← Uploaded PDFs go here
+├── app.py          <- FastAPI server
+├── extractor.py    <- Keyword-based requirement extraction
+├── matcher.py      <- Placeholder for future semantic matching
+├── utils.py        <- PDF reading
+├── data/           <- Uploaded PDFs go here (git ignored)
 ├── static/
-│   └── index.html  ← Simple web UI
+|   └── index.html  <- Simple web UI
 └── requirements.txt
 ```
 
@@ -60,7 +66,7 @@ tender-validator/
 
 ## What's next
 
-- **Checkpoint 2:** Replace keyword extraction with GPT — so it understands context and categories requirements (Technical, Legal, Financial, etc.)
+- **Checkpoint 2:** Replace keyword extraction with GPT so it understands context and groups requirements into categories (Technical, Legal, Financial, etc.)
 - **Checkpoint 3:** Add proposal upload and basic text matching
-- **Checkpoint 4:** Add semantic matching using embeddings (so paraphrased requirements still match)
+- **Checkpoint 4:** Add semantic matching using embeddings so paraphrased requirements still match
 - **Checkpoint 5:** Polish the UI and add confidence scores
