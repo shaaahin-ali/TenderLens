@@ -6,14 +6,44 @@ MANDATORY_KEYWORDS = ["must", "shall", "required", "mandatory", "is required to"
 def guess_category(text: str) -> str:
     text_lower = text.lower()
 
-    if any(word in text_lower for word in ["insurance", "nda", "regulation", "liability", "compliance", "law", "court"]):
+    # Legal checked first — overlapping terms (e.g. "compliance") belong here
+    if any(word in text_lower for word in [
+        "insurance", "nda", "non-disclosure", "regulation", "regulatory",
+        "liability", "compliance", "law", "court", "legal", "statutory",
+        "gdpr", "permit", "license", "certif", "accreditat", "indemnif",
+        "anti-bribery", "anti-corruption", "data protection",
+    ]):
         return "Legal Compliance"
-    if any(word in text_lower for word in ["cost", "payment", "fees", "price", "budget", "invoice", "financial"]):
+
+    if any(word in text_lower for word in [
+        "cost", "payment", "fees", "price", "pricing", "budget", "invoice",
+        "financial", "revenue", "billing", "penalty", "penalties", "damages",
+        "reimburs", "compensation",
+    ]):
         return "Financial Terms"
-    if any(word in text_lower for word in ["support", "system", "scalable", "software", "api", "database", "uptime", "technical"]):
+
+    if any(word in text_lower for word in [
+        "support", "system", "scalab", "scale", "scales", "scaling",
+        "software", "api", "database", "uptime", "technical", "server",
+        "infrastructure", "performance", "capacity", "users", "load",
+        "concurrent", "availability", "sla", "service level", "integration",
+        "deployment", "cloud", "network", "bandwidth", "latency", "response time",
+        "backup", "recovery", "security", "encryption", "authentication",
+    ]):
         return "Technical Specifications"
-    if any(word in text_lower for word in ["eco", "energy", "environmental", "carbon", "sustainable"]):
+
+    if any(word in text_lower for word in [
+        "eco", "energy", "environmental", "carbon", "sustainable", "emission",
+        "green", "renewable", "recycl",
+    ]):
         return "Environmental"
+
+    # Explicit operational/delivery terms → Operational (prevents General fallback)
+    if any(word in text_lower for word in [
+        "deliver", "project", "timeline", "deadline", "milestone", "report",
+        "document", "training", "staff", "personnel", "resource",
+    ]):
+        return "Operational"
 
     return "General"
 

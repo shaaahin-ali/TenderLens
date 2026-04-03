@@ -67,20 +67,35 @@ async def validate_proposal(file: UploadFile = File(...)):
 
     results = match_requirements(current_requirements, proposal_text)
 
-    met = sum(1 for r in results if r["verdict"] == "MET")
-    partial = sum(1 for r in results if r["verdict"] == "PARTIAL")
-    not_met = sum(1 for r in results if r["verdict"] == "NOT_MET")
-    met_but_vague = sum(1 for r in results if r["verdict"] == "MET_BUT_VAGUE")
+    met             = sum(1 for r in results if r["verdict"] == "MET")
+    partial         = sum(1 for r in results if r["verdict"] == "PARTIAL")
+    not_met         = sum(1 for r in results if r["verdict"] == "NOT_MET")
+    met_but_vague   = sum(1 for r in results if r["verdict"] == "MET_BUT_VAGUE")
     with_conditions = sum(1 for r in results if r.get("has_conditions"))
+
+    # ── Disqualification check ────────────────────────────────────────────────
+    # A vendor is disqualified when ANY requirement tagged DISQUALIFYING is
+    # either completely absent (NOT_MET) or only partially addressed (PARTIAL).
+    # PARTIAL is included because partial compliance on a legal/licensing
+    # requirement still means the vendor cannot legally fulfil the contract.
+    disqualifying_failures = [
+        {"id": r["id"], "requirement": r["requirement"], "verdict": r["verdict"]}
+        for r in results
+        if r.get("risk_level") == "DISQUALIFYING"
+        and r["verdict"] in ("NOT_MET", "PARTIAL")
+    ]
+    overall_status = "DISQUALIFIED" if disqualifying_failures else "PASSED"
 
     return {
         "status": "ok",
+        "overall_status": overall_status,
+        "disqualifying_failures": disqualifying_failures,
         "summary": {
-            "total": len(results),
-            "met": met,
-            "partial": partial,
-            "not_met": not_met,
-            "met_but_vague": met_but_vague,
+            "total":           len(results),
+            "met":             met,
+            "partial":         partial,
+            "not_met":         not_met,
+            "met_but_vague":   met_but_vague,
             "with_conditions": with_conditions,
         },
         "results": results

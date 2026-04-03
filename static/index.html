@@ -60,6 +60,7 @@
       font-weight: 700;
       letter-spacing: -.02em;
       background: linear-gradient(135deg, #fff 40%, #a5b4fc);
+      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -71,7 +72,7 @@
 
     /* ─── Layout ───────────────────────────────────────────────── */
     main {
-      max-width: 1200px;
+      max-width: 1280px;
       margin: 0 auto;
       padding: 2rem 1.5rem 4rem;
     }
@@ -160,7 +161,7 @@
       min-height: 1.25rem;
       display: flex; align-items: center; gap: .5rem;
     }
-    .status-msg.ok { color: var(--met); }
+    .status-msg.ok  { color: var(--met); }
     .status-msg.err { color: var(--not-met); }
     .spinner {
       width: 14px; height: 14px;
@@ -171,6 +172,44 @@
       flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── DISQUALIFIED BANNER ──────────────────────────────────── */
+    #disq-banner {
+      display: none;
+      background: rgba(239,68,68,.1);
+      border: 1.5px solid rgba(239,68,68,.5);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    #disq-banner h3 {
+      color: var(--not-met);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+    #disq-banner p  { color: #fca5a5; font-size: .8125rem; }
+    #disq-list { margin-top: .625rem; list-style: none; display: flex; flex-direction: column; gap: .3rem; }
+    #disq-list li {
+      font-size: .775rem;
+      color: #fca5a5;
+      padding-left: 1rem;
+      position: relative;
+    }
+    #disq-list li::before { content: "✗"; position: absolute; left: 0; color: var(--not-met); }
+
+    /* ─── PASSED BANNER ────────────────────────────────────────── */
+    #passed-banner {
+      display: none;
+      background: rgba(34,197,94,.08);
+      border: 1.5px solid rgba(34,197,94,.35);
+      border-radius: 10px;
+      padding: .875rem 1.25rem;
+      margin-bottom: 1.5rem;
+      color: #86efac;
+      font-size: .875rem;
+      font-weight: 600;
+    }
 
     /* ─── Results section ──────────────────────────────────────── */
     #results-section { display: none; margin-top: 2rem; }
@@ -183,21 +222,21 @@
       margin-bottom: 1.75rem;
     }
     .tile {
-      flex: 1 1 140px;
+      flex: 1 1 130px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: .875rem 1rem;
       display: flex; flex-direction: column; gap: .25rem;
     }
-    .tile-label { font-size: .75rem; color: var(--text-muted); font-weight: 500; }
+    .tile-label { font-size: .725rem; color: var(--text-muted); font-weight: 500; }
     .tile-value { font-size: 1.75rem; font-weight: 700; line-height: 1; }
 
-    .tile.t-met    { border-color: var(--met);   } .tile.t-met .tile-value    { color: var(--met); }
-    .tile.t-vague  { border-color: var(--vague); } .tile.t-vague .tile-value  { color: var(--vague); }
-    .tile.t-partial{ border-color: var(--partial);}.tile.t-partial .tile-value{ color: var(--partial); }
-    .tile.t-notmet { border-color: var(--not-met);}.tile.t-notmet .tile-value { color: var(--not-met); }
-    .tile.t-cond   { border-color: #38bdf8; }     .tile.t-cond .tile-value   { color: #38bdf8; }
+    .tile.t-met    { border-color: var(--met); }    .tile.t-met .tile-value    { color: var(--met); }
+    .tile.t-vague  { border-color: var(--vague); }  .tile.t-vague .tile-value  { color: var(--vague); }
+    .tile.t-partial{ border-color: var(--partial); } .tile.t-partial .tile-value{ color: var(--partial); }
+    .tile.t-notmet { border-color: var(--not-met); } .tile.t-notmet .tile-value { color: var(--not-met); }
+    .tile.t-cond   { border-color: #38bdf8; }        .tile.t-cond .tile-value   { color: #38bdf8; }
 
     /* ─── Results table ────────────────────────────────────────── */
     .table-wrap {
@@ -223,11 +262,13 @@
       background: var(--surface2);
       padding: .625rem 1rem;
       text-align: left;
-      font-size: .75rem;
+      font-size: .725rem;
       font-weight: 600;
       color: var(--text-muted);
       white-space: nowrap;
       border-bottom: 1px solid var(--border);
+      letter-spacing: .04em;
+      text-transform: uppercase;
     }
     tbody tr {
       border-bottom: 1px solid var(--border);
@@ -235,68 +276,51 @@
     }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: var(--surface2); }
-    td {
-      padding: .875rem 1rem;
-      vertical-align: top;
-    }
+    td { padding: .875rem 1rem; vertical-align: top; }
 
     /* ─── Badges ───────────────────────────────────────────────── */
     .badge {
       display: inline-flex; align-items: center; gap: .3rem;
       padding: .2rem .55rem;
       border-radius: 999px;
-      font-size: .7rem;
+      font-size: .695rem;
       font-weight: 600;
       white-space: nowrap;
     }
-    .badge-met       { background: var(--met-bg);        color: var(--met); }
-    .badge-vague     { background: var(--vague-bg);      color: var(--vague); }
-    .badge-partial   { background: var(--partial-bg);    color: var(--partial); }
-    .badge-not-met   { background: var(--not-met-bg);    color: var(--not-met); }
+    .badge-met       { background: var(--met-bg);           color: var(--met); }
+    .badge-vague     { background: var(--vague-bg);         color: var(--vague); }
+    .badge-partial   { background: var(--partial-bg);       color: var(--partial); }
+    .badge-not-met   { background: var(--not-met-bg);       color: var(--not-met); }
     .badge-disq      { background: var(--disqualifying-bg); color: var(--disqualifying); }
-    .badge-high      { background: var(--high-risk-bg);  color: var(--high-risk); }
-    .badge-std       { background: var(--standard-bg);   color: var(--text-muted); }
-    .badge-cond      { background: rgba(56,189,248,.12); color: #38bdf8; }
+    .badge-high      { background: var(--high-risk-bg);     color: var(--high-risk); }
+    .badge-std       { background: var(--standard-bg);      color: var(--text-muted); }
+    .badge-cond      { background: rgba(56,189,248,.12);    color: #38bdf8; }
 
     /* ─── Requirement cell ─────────────────────────────────────── */
     .req-text { font-weight: 500; margin-bottom: .4rem; line-height: 1.45; }
     .req-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
 
-    /* ─── Excerpt & detail cells ───────────────────────────────── */
-    .excerpt {
-      color: var(--text-muted);
-      font-size: .775rem;
-      line-height: 1.5;
-    }
-    .hedge-list, .cond-list {
-      margin-top: .4rem;
-      display: flex; flex-direction: column; gap: .2rem;
-    }
-    .hedge-item {
-      display: inline-flex; align-items: center; gap: .3rem;
-      font-size: .725rem;
-      color: var(--vague);
-    }
-    .cond-item {
-      display: inline-flex; align-items: center; gap: .3rem;
-      font-size: .725rem;
-      color: #38bdf8;
-    }
-
-    /* ─── Confidence bar ───────────────────────────────────────── */
-    .conf-wrap {
-      display: flex; align-items: center; gap: .5rem;
-      min-width: 80px;
-    }
-    .conf-bar {
+    /* ─── Score cells ──────────────────────────────────────────── */
+    .scores-cell { display: flex; flex-direction: column; gap: .55rem; min-width: 100px; }
+    .score-row { display: flex; flex-direction: column; gap: .2rem; }
+    .score-label { font-size: .65rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+    .score-bar-wrap { display: flex; align-items: center; gap: .4rem; }
+    .score-bar {
       flex: 1;
       height: 4px;
       background: var(--border);
       border-radius: 999px;
       overflow: hidden;
+      min-width: 50px;
     }
-    .conf-fill { height: 100%; border-radius: 999px; }
-    .conf-label { font-size: .725rem; color: var(--text-muted); min-width: 28px; text-align: right; }
+    .score-fill { height: 100%; border-radius: 999px; }
+    .score-val { font-size: .725rem; color: var(--text-muted); min-width: 28px; text-align: right; font-weight: 600; }
+
+    /* ─── Excerpt & detail cells ───────────────────────────────── */
+    .excerpt { color: var(--text-muted); font-size: .775rem; line-height: 1.5; font-style: italic; }
+    .detail-list { margin-top: .4rem; display: flex; flex-direction: column; gap: .2rem; }
+    .hedge-item { font-size: .72rem; color: var(--vague); }
+    .cond-item  { font-size: .72rem; color: #38bdf8; }
 
     /* ─── Empty state ──────────────────────────────────────────── */
     .empty-row td {
@@ -311,14 +335,13 @@
 
 <header>
   <h1>Tender Compliance Validator</h1>
-  <p>Free &amp; Offline Edition — Semantic AI matching with hedge &amp; risk analysis</p>
+  <p>Free &amp; Offline Edition — Semantic AI matching · Hedge detection · Risk analysis</p>
 </header>
 
 <main>
   <!-- ─── Step Cards ─── -->
   <div class="steps">
-
-    <!-- Step 1: RFP Upload -->
+    <!-- Step 1 -->
     <div class="step-card">
       <div class="step-label">
         <div class="step-num">1</div>
@@ -334,7 +357,7 @@
       <div id="rfp-status" class="status-msg"></div>
     </div>
 
-    <!-- Step 2: Proposal Upload -->
+    <!-- Step 2 -->
     <div class="step-card">
       <div class="step-label">
         <div class="step-num">2</div>
@@ -349,11 +372,20 @@
       <button id="proposal-btn" class="btn" onclick="validateProposal()" disabled>Validate Proposal</button>
       <div id="proposal-status" class="status-msg"></div>
     </div>
-
   </div>
 
   <!-- ─── Results Section ─── -->
   <section id="results-section" aria-live="polite">
+
+    <!-- Disqualification banner (shown when overall_status = DISQUALIFIED) -->
+    <div id="disq-banner">
+      <h3>⛔ Vendor DISQUALIFIED</h3>
+      <p>The following mandatory requirements were not met. Failure on any DISQUALIFYING requirement is grounds for immediate bid rejection.</p>
+      <ul id="disq-list"></ul>
+    </div>
+
+    <!-- Passed banner -->
+    <div id="passed-banner">✅ Vendor passed all disqualifying checks. Full compliance review below.</div>
 
     <!-- Summary tiles -->
     <div class="summary-bar">
@@ -387,7 +419,7 @@
     <div class="table-wrap">
       <div class="table-header">
         <span>Compliance Results</span>
-        <span id="results-count" style="font-size:.8rem"></span>
+        <span id="results-count" style="font-size:.8rem;font-weight:400"></span>
       </div>
       <div style="overflow-x:auto">
         <table>
@@ -396,8 +428,8 @@
               <th>#</th>
               <th style="min-width:260px">Requirement</th>
               <th>Verdict</th>
-              <th>Confidence</th>
-              <th style="min-width:220px">Best Match / Issues</th>
+              <th style="min-width:110px">Scores</th>
+              <th style="min-width:230px">Match Excerpt / Issues</th>
             </tr>
           </thead>
           <tbody id="results-body">
@@ -406,45 +438,40 @@
         </table>
       </div>
     </div>
-
   </section>
 </main>
 
 <script>
-  // ─── Drag & drop visual feedback ─────────────────────────────
+  /* ─── Drag & drop ─────────────────────────────────────────────── */
   ['rfp-zone', 'proposal-zone'].forEach(id => {
-    const zone = document.getElementById(id);
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragging'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
-    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragging'); });
+    const z = document.getElementById(id);
+    z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('dragging'); });
+    z.addEventListener('dragleave', () => z.classList.remove('dragging'));
+    z.addEventListener('drop',     e => { e.preventDefault(); z.classList.remove('dragging'); });
   });
 
-  // Show filename when user picks a file
   document.getElementById('rfp-file').addEventListener('change', e => {
-    const f = e.target.files[0];
-    if (f) document.querySelector('#rfp-zone strong').textContent = f.name;
+    if (e.target.files[0]) document.querySelector('#rfp-zone strong').textContent = e.target.files[0].name;
   });
   document.getElementById('proposal-file').addEventListener('change', e => {
-    const f = e.target.files[0];
-    if (f) document.querySelector('#proposal-zone strong').textContent = f.name;
+    if (e.target.files[0]) document.querySelector('#proposal-zone strong').textContent = e.target.files[0].name;
   });
 
-  // ─── Status helpers ───────────────────────────────────────────
+  /* ─── Status helpers ──────────────────────────────────────────── */
   function setStatus(id, msg, type = '', loading = false) {
     const el = document.getElementById(id);
     el.className = 'status-msg' + (type ? ' ' + type : '');
     el.innerHTML = loading ? `<span class="spinner"></span> ${msg}` : msg;
   }
 
-  // ─── Step 1: Upload RFP ───────────────────────────────────────
+  /* ─── Step 1: Upload RFP ─────────────────────────────────────── */
   async function uploadRFP() {
     const file = document.getElementById('rfp-file').files[0];
     if (!file) { setStatus('rfp-status', '⚠ Please select an RFP PDF first.', 'err'); return; }
 
     const btn = document.getElementById('rfp-btn');
-    const proposalBtn = document.getElementById('proposal-btn');
+    document.getElementById('proposal-btn').disabled = true;
     btn.disabled = true;
-    proposalBtn.disabled = true;
     setStatus('rfp-status', 'Extracting requirements…', '', true);
 
     try {
@@ -452,11 +479,10 @@
       fd.append('file', file);
       const res = await fetch('/upload-rfp', { method: 'POST', body: fd });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.detail || 'Upload failed');
 
       setStatus('rfp-status', `✓ ${data.total} requirements extracted.`, 'ok');
-      proposalBtn.disabled = false;
+      document.getElementById('proposal-btn').disabled = false;
     } catch (err) {
       setStatus('rfp-status', `✗ ${err.message}`, 'err');
     } finally {
@@ -464,7 +490,7 @@
     }
   }
 
-  // ─── Step 2: Validate Proposal ────────────────────────────────
+  /* ─── Step 2: Validate ──────────────────────────────────────── */
   async function validateProposal() {
     const file = document.getElementById('proposal-file').files[0];
     if (!file) { setStatus('proposal-status', '⚠ Please select a proposal PDF first.', 'err'); return; }
@@ -476,9 +502,8 @@
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/validate', { method: 'POST', body: fd });
+      const res  = await fetch('/validate', { method: 'POST', body: fd });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.detail || 'Validation failed');
 
       renderResults(data);
@@ -490,61 +515,98 @@
     }
   }
 
-  // ─── Render helpers ───────────────────────────────────────────
-  function verdictBadge(verdict) {
+  /* ─── Badge factories ────────────────────────────────────────── */
+  function verdictBadge(v) {
     const map = {
-      MET:          ['badge-met',     '✅ Met'],
-      MET_BUT_VAGUE:['badge-vague',   '⚠ Met but Vague'],
-      PARTIAL:      ['badge-partial', '🔵 Partial'],
-      NOT_MET:      ['badge-not-met', '❌ Not Met'],
+      MET:           ['badge-met',     '✅ Met'],
+      MET_BUT_VAGUE: ['badge-vague',   '⚠ Met but Vague'],
+      PARTIAL:       ['badge-partial', '🔵 Partial'],
+      NOT_MET:       ['badge-not-met', '❌ Not Met'],
     };
-    const [cls, label] = map[verdict] || ['badge-std', verdict];
-    return `<span class="badge ${cls}">${label}</span>`;
+    const [cls, lbl] = map[v] || ['badge-std', v];
+    return `<span class="badge ${cls}">${lbl}</span>`;
   }
 
-  function riskBadge(risk) {
+  function riskBadge(r) {
     const map = {
       DISQUALIFYING: ['badge-disq', '🔴 Disqualifying'],
       HIGH_RISK:     ['badge-high', '🟠 High Risk'],
       STANDARD:      ['badge-std',  'Standard'],
     };
-    const [cls, label] = map[risk] || ['badge-std', risk];
-    return `<span class="badge ${cls}">${label}</span>`;
+    const [cls, lbl] = map[r] || ['badge-std', r || 'Standard'];
+    return `<span class="badge ${cls}">${lbl}</span>`;
   }
 
-  function confBar(score) {
-    let color = '#ef4444';
-    if (score >= 65) color = '#22c55e';
-    else if (score >= 40) color = '#3b82f6';
+  /* ─── Dual score bar ────────────────────────────────────────── */
+  function scoresCell(semantic, compliance) {
+    function barColor(pct) {
+      if (pct >= 75) return '#22c55e';
+      if (pct >= 50) return '#3b82f6';
+      return '#ef4444';
+    }
     return `
-      <div class="conf-wrap">
-        <div class="conf-bar">
-          <div class="conf-fill" style="width:${score}%;background:${color}"></div>
+      <div class="scores-cell">
+        <div class="score-row">
+          <span class="score-label">Semantic match</span>
+          <div class="score-bar-wrap">
+            <div class="score-bar">
+              <div class="score-fill" style="width:${semantic}%;background:${barColor(semantic)}"></div>
+            </div>
+            <span class="score-val">${semantic}%</span>
+          </div>
         </div>
-        <span class="conf-label">${score}%</span>
+        <div class="score-row">
+          <span class="score-label">Compliance</span>
+          <div class="score-bar-wrap">
+            <div class="score-bar">
+              <div class="score-fill" style="width:${compliance}%;background:${barColor(compliance)}"></div>
+            </div>
+            <span class="score-val">${compliance}%</span>
+          </div>
+        </div>
       </div>`;
   }
 
-  function escapeHtml(str) {
-    return String(str)
+  function esc(s) {
+    return String(s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ─── Main render ──────────────────────────────────────────────
+  /* ─── Main render ───────────────────────────────────────────── */
   function renderResults(data) {
-    const { summary, results } = data;
+    const { summary, results, overall_status, disqualifying_failures } = data;
 
-    // Update tiles
+    // ── Overall status banners ──
+    const disqBanner   = document.getElementById('disq-banner');
+    const passedBanner = document.getElementById('passed-banner');
+    const disqList     = document.getElementById('disq-list');
+
+    disqBanner.style.display   = 'none';
+    passedBanner.style.display = 'none';
+    disqList.innerHTML = '';
+
+    if (overall_status === 'DISQUALIFIED') {
+      disqBanner.style.display = 'block';
+      disqualifying_failures.forEach(f => {
+        const li = document.createElement('li');
+        li.textContent = `[Req #${f.id}] ${f.requirement} — ${f.verdict.replace('_',' ')}`;
+        disqList.appendChild(li);
+      });
+    } else {
+      passedBanner.style.display = 'block';
+    }
+
+    // ── Summary tiles ──
     document.getElementById('s-total').textContent   = summary.total;
     document.getElementById('s-met').textContent     = summary.met;
     document.getElementById('s-vague').textContent   = summary.met_but_vague;
     document.getElementById('s-partial').textContent = summary.partial;
     document.getElementById('s-notmet').textContent  = summary.not_met;
     document.getElementById('s-cond').textContent    = summary.with_conditions;
-    document.getElementById('results-count').textContent = `${results.length} rows`;
+    document.getElementById('results-count').textContent = `${results.length} requirements`;
 
-    // Build table rows
+    // ── Table rows ──
     const tbody = document.getElementById('results-body');
     tbody.innerHTML = '';
 
@@ -554,60 +616,53 @@
     }
 
     results.forEach(r => {
-      // ── Requirement cell ──
+      /* Requirement cell */
       const reqCell = `
-        <div class="req-text">${escapeHtml(r.requirement)}</div>
+        <div class="req-text">${esc(r.requirement)}</div>
         <div class="req-meta">
           ${riskBadge(r.risk_level || 'STANDARD')}
-          <span class="badge badge-std">${escapeHtml(r.category || '')}</span>
+          <span class="badge badge-std">${esc(r.category || 'General')}</span>
         </div>`;
 
-      // ── Verdict cell ──
-      const verdictCell = verdictBadge(r.verdict);
+      /* Scores cell — semantic vs compliance */
+      const scCell = scoresCell(
+        r.semantic_similarity  ?? r.confidence ?? 0,
+        r.compliance_score     ?? r.confidence ?? 0
+      );
 
-      // ── Confidence cell ──
-      const confCell = confBar(r.confidence || 0);
-
-      // ── Detail cell: excerpt + hedge phrases + conditions ──
-      let detailCell = '';
-
+      /* Detail cell */
+      let detail = '';
       if (r.best_match_excerpt) {
-        detailCell += `<div class="excerpt">"${escapeHtml(r.best_match_excerpt)}"</div>`;
+        detail += `<div class="excerpt">"${esc(r.best_match_excerpt)}"</div>`;
       }
-
-      // Hedge phrases
-      if (r.is_vague && r.hedge_phrases_found && r.hedge_phrases_found.length) {
-        detailCell += `<div class="hedge-list">`;
-        r.hedge_phrases_found.forEach(p => {
-          detailCell += `<span class="hedge-item">⚠ Hedge phrase: "<em>${escapeHtml(p)}</em>"</span>`;
-        });
-        detailCell += `</div>`;
+      if (r.is_vague && r.hedge_phrases_found?.length) {
+        detail += `<div class="detail-list">`;
+        r.hedge_phrases_found.forEach(p =>
+          detail += `<span class="hedge-item">⚠ Hedge: "<em>${esc(p)}</em>"</span>`
+        );
+        detail += `</div>`;
       }
-
-      // Conditions
-      if (r.has_conditions && r.conditions_found && r.conditions_found.length) {
-        detailCell += `<div class="cond-list">`;
-        r.conditions_found.forEach(c => {
-          detailCell += `<span class="cond-item">🔵 Condition: "<em>${escapeHtml(c)}</em>"</span>`;
-        });
-        detailCell += `</div>`;
+      if (r.has_conditions && r.conditions_found?.length) {
+        detail += `<div class="detail-list">`;
+        r.conditions_found.forEach(c =>
+          detail += `<span class="cond-item">🔵 Condition: "<em>${esc(c)}</em>"</span>`
+        );
+        detail += `</div>`;
       }
-
-      if (!detailCell) {
-        detailCell = `<span style="color:var(--text-muted);font-size:.775rem">—</span>`;
+      if (!detail) {
+        detail = `<span style="color:var(--text-muted);font-size:.775rem">—</span>`;
       }
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td style="color:var(--text-muted);font-weight:600">${r.id}</td>
+        <td style="color:var(--text-muted);font-weight:600;white-space:nowrap">${r.id}</td>
         <td>${reqCell}</td>
-        <td>${verdictCell}</td>
-        <td>${confCell}</td>
-        <td>${detailCell}</td>`;
+        <td>${verdictBadge(r.verdict)}</td>
+        <td>${scCell}</td>
+        <td>${detail}</td>`;
       tbody.appendChild(tr);
     });
 
-    // Show section
     document.getElementById('results-section').style.display = 'block';
     document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
