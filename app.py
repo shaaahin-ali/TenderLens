@@ -70,9 +70,18 @@ async def validate_proposal(file: UploadFile = File(...)):
     met = sum(1 for r in results if r["verdict"] == "MET")
     partial = sum(1 for r in results if r["verdict"] == "PARTIAL")
     not_met = sum(1 for r in results if r["verdict"] == "NOT_MET")
+    met_but_vague = sum(1 for r in results if r["verdict"] == "MET_BUT_VAGUE")
+    with_conditions = sum(1 for r in results if r.get("has_conditions"))
 
     return {
         "status": "ok",
-        "summary": {"total": len(results), "met": met, "partial": partial, "not_met": not_met},
+        "summary": {
+            "total": len(results),
+            "met": met,
+            "partial": partial,
+            "not_met": not_met,
+            "met_but_vague": met_but_vague,
+            "with_conditions": with_conditions,
+        },
         "results": results
     }

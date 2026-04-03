@@ -2,209 +2,616 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Tender Compliance Validator (Free Edition)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tender Compliance Validator</title>
+  <meta name="description" content="Upload an RFP and vendor proposal to automatically extract mandatory requirements and validate compliance with semantic AI matching." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; line-height: 1.5; color: #333; }
-    h1 { font-size: 1.8rem; margin-bottom: 4px; color: #111; }
-    p.sub { color: #666; margin-bottom: 24px; }
-    
-    .card { background: #fdfdfd; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
-    .card h2 { margin-top: 0; font-size: 1.25rem; }
-    
-    label { display: block; font-weight: bold; margin-bottom: 6px; }
-    input[type="file"] { display: block; margin-bottom: 12px; }
-    button { padding: 8px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .status { margin-top: 12px; color: #555; font-style: italic; }
-    
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.9rem; }
-    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-    th { background: #f8fafc; font-weight: 600; }
-    
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
-    .b-met { background: #dcfce7; color: #166534; }
-    .b-partial { background: #fef9c3; color: #854d0e; }
-    .b-missing { background: #fee2e2; color: #991b1b; }
-    
-    .hidden { display: none; }
-    .excerpt { font-size: 0.8rem; color: #555; background: #f8fafc; padding: 4px; border-radius: 4px; margin-top: 4px; }
-    .stats { display: flex; gap: 16px; margin-bottom: 16px; font-weight: bold; }
+    /* ─── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3247;
+      --text: #e8eaf6;
+      --text-muted: #7c82a0;
+      --accent: #6c63ff;
+      --accent-glow: rgba(108,99,255,.25);
+
+      --met: #22c55e;
+      --met-bg: rgba(34,197,94,.12);
+      --vague: #f59e0b;
+      --vague-bg: rgba(245,158,11,.12);
+      --partial: #3b82f6;
+      --partial-bg: rgba(59,130,246,.12);
+      --not-met: #ef4444;
+      --not-met-bg: rgba(239,68,68,.12);
+
+      --disqualifying: #ef4444;
+      --disqualifying-bg: rgba(239,68,68,.12);
+      --high-risk: #f97316;
+      --high-risk-bg: rgba(249,115,22,.12);
+      --standard: #475569;
+      --standard-bg: rgba(71,85,105,.12);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ─── Header ───────────────────────────────────────────────── */
+    header {
+      padding: 2rem 1.5rem 1.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(108,99,255,.06) 0%, transparent 100%);
+    }
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      background: linear-gradient(135deg, #fff 40%, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p {
+      margin-top: .5rem;
+      color: var(--text-muted);
+      font-size: .875rem;
+    }
+
+    /* ─── Layout ───────────────────────────────────────────────── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ─── Steps ────────────────────────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 680px) { .steps { grid-template-columns: 1fr; } }
+
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: border-color .2s;
+    }
+    .step-card:hover { border-color: var(--accent); }
+
+    .step-label {
+      display: flex;
+      align-items: center;
+      gap: .625rem;
+      margin-bottom: 1rem;
+    }
+    .step-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: .75rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-label h2 { font-size: 1rem; font-weight: 600; }
+
+    /* ─── Upload zone ──────────────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragging {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 2rem; margin-bottom: .5rem; }
+    .upload-zone p { color: var(--text-muted); font-size: .8125rem; }
+    .upload-zone strong { color: var(--text); font-size: .875rem; display: block; margin-bottom: .25rem; }
+
+    /* ─── Buttons ──────────────────────────────────────────────── */
+    .btn {
+      margin-top: 1rem;
+      width: 100%;
+      padding: .75rem 1rem;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn:hover { opacity: .88; }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ─── Status message ───────────────────────────────────────── */
+    .status-msg {
+      margin-top: .875rem;
+      font-size: .8125rem;
+      color: var(--text-muted);
+      min-height: 1.25rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .status-msg.ok { color: var(--met); }
+    .status-msg.err { color: var(--not-met); }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Results section ──────────────────────────────────────── */
+    #results-section { display: none; margin-top: 2rem; }
+
+    /* ─── Summary tiles ────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 1.75rem;
+    }
+    .tile {
+      flex: 1 1 140px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .875rem 1rem;
+      display: flex; flex-direction: column; gap: .25rem;
+    }
+    .tile-label { font-size: .75rem; color: var(--text-muted); font-weight: 500; }
+    .tile-value { font-size: 1.75rem; font-weight: 700; line-height: 1; }
+
+    .tile.t-met    { border-color: var(--met);   } .tile.t-met .tile-value    { color: var(--met); }
+    .tile.t-vague  { border-color: var(--vague); } .tile.t-vague .tile-value  { color: var(--vague); }
+    .tile.t-partial{ border-color: var(--partial);}.tile.t-partial .tile-value{ color: var(--partial); }
+    .tile.t-notmet { border-color: var(--not-met);}.tile.t-notmet .tile-value { color: var(--not-met); }
+    .tile.t-cond   { border-color: #38bdf8; }     .tile.t-cond .tile-value   { color: #38bdf8; }
+
+    /* ─── Results table ────────────────────────────────────────── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .8125rem;
+    }
+    thead th {
+      background: var(--surface2);
+      padding: .625rem 1rem;
+      text-align: left;
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    td {
+      padding: .875rem 1rem;
+      vertical-align: top;
+    }
+
+    /* ─── Badges ───────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .2rem .55rem;
+      border-radius: 999px;
+      font-size: .7rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-met       { background: var(--met-bg);        color: var(--met); }
+    .badge-vague     { background: var(--vague-bg);      color: var(--vague); }
+    .badge-partial   { background: var(--partial-bg);    color: var(--partial); }
+    .badge-not-met   { background: var(--not-met-bg);    color: var(--not-met); }
+    .badge-disq      { background: var(--disqualifying-bg); color: var(--disqualifying); }
+    .badge-high      { background: var(--high-risk-bg);  color: var(--high-risk); }
+    .badge-std       { background: var(--standard-bg);   color: var(--text-muted); }
+    .badge-cond      { background: rgba(56,189,248,.12); color: #38bdf8; }
+
+    /* ─── Requirement cell ─────────────────────────────────────── */
+    .req-text { font-weight: 500; margin-bottom: .4rem; line-height: 1.45; }
+    .req-meta { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+
+    /* ─── Excerpt & detail cells ───────────────────────────────── */
+    .excerpt {
+      color: var(--text-muted);
+      font-size: .775rem;
+      line-height: 1.5;
+    }
+    .hedge-list, .cond-list {
+      margin-top: .4rem;
+      display: flex; flex-direction: column; gap: .2rem;
+    }
+    .hedge-item {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .725rem;
+      color: var(--vague);
+    }
+    .cond-item {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .725rem;
+      color: #38bdf8;
+    }
+
+    /* ─── Confidence bar ───────────────────────────────────────── */
+    .conf-wrap {
+      display: flex; align-items: center; gap: .5rem;
+      min-width: 80px;
+    }
+    .conf-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .conf-fill { height: 100%; border-radius: 999px; }
+    .conf-label { font-size: .725rem; color: var(--text-muted); min-width: 28px; text-align: right; }
+
+    /* ─── Empty state ──────────────────────────────────────────── */
+    .empty-row td {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 2.5rem;
+      font-size: .875rem;
+    }
   </style>
 </head>
 <body>
 
-  <h1>📋 Tender Compliance Validator (Free Edition)</h1>
-  <p class="sub">100% offline workflow. Extracts requirements using keywords and matches meaning using local embeddings.</p>
+<header>
+  <h1>Tender Compliance Validator</h1>
+  <p>Free &amp; Offline Edition — Semantic AI matching with hedge &amp; risk analysis</p>
+</header>
 
-  <!-- Step 1: RFP -->
-  <div class="card" id="step1">
-    <h2>Step 1: Upload RFP</h2>
-    <label for="rfp-file">Select RFP PDF:</label>
-    <input type="file" id="rfp-file" accept=".pdf" />
-    <button id="upload-btn" disabled>Extract Requirements</button>
-    <p id="rfp-status" class="status"></p>
+<main>
+  <!-- ─── Step Cards ─── -->
+  <div class="steps">
 
-    <div id="rfp-results" class="hidden">
-      <h3 id="rfp-heading"></h3>
-      <table>
-        <thead>
-          <tr>
-            <th width="5%">#</th>
-            <th width="65%">Requirement</th>
-            <th width="15%">Category</th>
-            <th width="15%">Trigger Word</th>
-          </tr>
-        </thead>
-        <tbody id="rfp-body"></tbody>
-      </table>
+    <!-- Step 1: RFP Upload -->
+    <div class="step-card">
+      <div class="step-label">
+        <div class="step-num">1</div>
+        <h2>Upload RFP Document</h2>
+      </div>
+      <div id="rfp-zone" class="upload-zone">
+        <input type="file" id="rfp-file" accept=".pdf" aria-label="Upload RFP PDF" />
+        <div class="upload-icon">📄</div>
+        <strong>Click or drag &amp; drop</strong>
+        <p>PDF files only · RFP / Tender Document</p>
+      </div>
+      <button id="rfp-btn" class="btn" onclick="uploadRFP()">Extract Requirements</button>
+      <div id="rfp-status" class="status-msg"></div>
     </div>
+
+    <!-- Step 2: Proposal Upload -->
+    <div class="step-card">
+      <div class="step-label">
+        <div class="step-num">2</div>
+        <h2>Upload Vendor Proposal</h2>
+      </div>
+      <div id="proposal-zone" class="upload-zone">
+        <input type="file" id="proposal-file" accept=".pdf" aria-label="Upload Proposal PDF" />
+        <div class="upload-icon">📋</div>
+        <strong>Click or drag &amp; drop</strong>
+        <p>PDF files only · Vendor Response / Proposal</p>
+      </div>
+      <button id="proposal-btn" class="btn" onclick="validateProposal()" disabled>Validate Proposal</button>
+      <div id="proposal-status" class="status-msg"></div>
+    </div>
+
   </div>
 
-  <!-- Step 2: Proposal (Hidden until RFP is done) -->
-  <div class="card hidden" id="step2">
-    <h2>Step 2: Upload Vendor Proposal</h2>
-    <label for="prop-file">Select Proposal PDF:</label>
-    <input type="file" id="prop-file" accept=".pdf" />
-    <button id="validate-btn" disabled>Run Semantic Matching</button>
-    <p id="prop-status" class="status"></p>
-    
-    <div id="prop-results" class="hidden">
-      <h3>Validation Results</h3>
-      
-      <div class="stats" id="stats-bar"></div>
-      
-      <table>
-        <thead>
-          <tr>
-            <th width="5%">#</th>
-            <th width="40%">Requirement</th>
-            <th width="15%">Status</th>
-            <th width="10%">Confidence</th>
-            <th width="30%">Best Match Found in Proposal</th>
-          </tr>
-        </thead>
-        <tbody id="prop-body"></tbody>
-      </table>
+  <!-- ─── Results Section ─── -->
+  <section id="results-section" aria-live="polite">
+
+    <!-- Summary tiles -->
+    <div class="summary-bar">
+      <div class="tile">
+        <span class="tile-label">Total Requirements</span>
+        <span class="tile-value" id="s-total">–</span>
+      </div>
+      <div class="tile t-met">
+        <span class="tile-label">✅ Met</span>
+        <span class="tile-value" id="s-met">–</span>
+      </div>
+      <div class="tile t-vague">
+        <span class="tile-label">⚠ Met but Vague</span>
+        <span class="tile-value" id="s-vague">–</span>
+      </div>
+      <div class="tile t-partial">
+        <span class="tile-label">🔵 Partial</span>
+        <span class="tile-value" id="s-partial">–</span>
+      </div>
+      <div class="tile t-notmet">
+        <span class="tile-label">❌ Not Met</span>
+        <span class="tile-value" id="s-notmet">–</span>
+      </div>
+      <div class="tile t-cond">
+        <span class="tile-label">🔵 Conditional</span>
+        <span class="tile-value" id="s-cond">–</span>
+      </div>
     </div>
-  </div>
 
-  <script>
-    // --- Step 1 UI Logic ---
-    const rfpInput = document.getElementById("rfp-file");
-    const rfpBtn = document.getElementById("upload-btn");
-    const rfpStatus = document.getElementById("rfp-status");
+    <!-- Results table -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <span>Compliance Results</span>
+        <span id="results-count" style="font-size:.8rem"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th style="min-width:260px">Requirement</th>
+              <th>Verdict</th>
+              <th>Confidence</th>
+              <th style="min-width:220px">Best Match / Issues</th>
+            </tr>
+          </thead>
+          <tbody id="results-body">
+            <tr class="empty-row"><td colspan="5">Upload documents above to see results.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-    rfpInput.addEventListener("change", () => {
-      rfpBtn.disabled = !rfpInput.files.length;
-    });
+  </section>
+</main>
 
-    rfpBtn.addEventListener("click", async () => {
-      const file = rfpInput.files[0];
-      if (!file) return;
+<script>
+  // ─── Drag & drop visual feedback ─────────────────────────────
+  ['rfp-zone', 'proposal-zone'].forEach(id => {
+    const zone = document.getElementById(id);
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragging'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragging'); });
+  });
 
-      rfpBtn.disabled = true;
-      rfpStatus.textContent = "Scanning document for keywords...";
+  // Show filename when user picks a file
+  document.getElementById('rfp-file').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) document.querySelector('#rfp-zone strong').textContent = f.name;
+  });
+  document.getElementById('proposal-file').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) document.querySelector('#proposal-zone strong').textContent = f.name;
+  });
 
-      const form = new FormData();
-      form.append("file", file);
+  // ─── Status helpers ───────────────────────────────────────────
+  function setStatus(id, msg, type = '', loading = false) {
+    const el = document.getElementById(id);
+    el.className = 'status-msg' + (type ? ' ' + type : '');
+    el.innerHTML = loading ? `<span class="spinner"></span> ${msg}` : msg;
+  }
 
-      try {
-        const res = await fetch("/upload-rfp", { method: "POST", body: form });
-        const data = await res.json();
-        
-        if (!res.ok) throw new Error(data.detail || "Error");
+  // ─── Step 1: Upload RFP ───────────────────────────────────────
+  async function uploadRFP() {
+    const file = document.getElementById('rfp-file').files[0];
+    if (!file) { setStatus('rfp-status', '⚠ Please select an RFP PDF first.', 'err'); return; }
 
-        rfpStatus.textContent = "";
-        
-        // Show the results table
-        document.getElementById("rfp-results").classList.remove("hidden");
-        document.getElementById("rfp-heading").textContent = `Found ${data.total} mandatory requirements`;
-        
-        const tbody = document.getElementById("rfp-body");
-        tbody.innerHTML = "";
-        data.requirements.forEach(req => {
-          tbody.innerHTML += `<tr>
-            <td>${req.id}</td>
-            <td>${req.requirement}</td>
-            <td>${req.category || 'General'}</td>
-            <td><code>${req.keyword}</code></td>
-          </tr>`;
-        });
+    const btn = document.getElementById('rfp-btn');
+    const proposalBtn = document.getElementById('proposal-btn');
+    btn.disabled = true;
+    proposalBtn.disabled = true;
+    setStatus('rfp-status', 'Extracting requirements…', '', true);
 
-        // Unhide step 2
-        document.getElementById("step2").classList.remove("hidden");
-        
-      } catch (err) {
-        rfpStatus.textContent = "Network error: " + err.message;
-      } finally {
-        rfpBtn.disabled = false;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/upload-rfp', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+      setStatus('rfp-status', `✓ ${data.total} requirements extracted.`, 'ok');
+      proposalBtn.disabled = false;
+    } catch (err) {
+      setStatus('rfp-status', `✗ ${err.message}`, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ─── Step 2: Validate Proposal ────────────────────────────────
+  async function validateProposal() {
+    const file = document.getElementById('proposal-file').files[0];
+    if (!file) { setStatus('proposal-status', '⚠ Please select a proposal PDF first.', 'err'); return; }
+
+    const btn = document.getElementById('proposal-btn');
+    btn.disabled = true;
+    setStatus('proposal-status', 'Running semantic matching + analysis…', '', true);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/validate', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || 'Validation failed');
+
+      renderResults(data);
+      setStatus('proposal-status', `✓ Validation complete — ${data.summary.total} requirements analyzed.`, 'ok');
+    } catch (err) {
+      setStatus('proposal-status', `✗ ${err.message}`, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ─── Render helpers ───────────────────────────────────────────
+  function verdictBadge(verdict) {
+    const map = {
+      MET:          ['badge-met',     '✅ Met'],
+      MET_BUT_VAGUE:['badge-vague',   '⚠ Met but Vague'],
+      PARTIAL:      ['badge-partial', '🔵 Partial'],
+      NOT_MET:      ['badge-not-met', '❌ Not Met'],
+    };
+    const [cls, label] = map[verdict] || ['badge-std', verdict];
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function riskBadge(risk) {
+    const map = {
+      DISQUALIFYING: ['badge-disq', '🔴 Disqualifying'],
+      HIGH_RISK:     ['badge-high', '🟠 High Risk'],
+      STANDARD:      ['badge-std',  'Standard'],
+    };
+    const [cls, label] = map[risk] || ['badge-std', risk];
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function confBar(score) {
+    let color = '#ef4444';
+    if (score >= 65) color = '#22c55e';
+    else if (score >= 40) color = '#3b82f6';
+    return `
+      <div class="conf-wrap">
+        <div class="conf-bar">
+          <div class="conf-fill" style="width:${score}%;background:${color}"></div>
+        </div>
+        <span class="conf-label">${score}%</span>
+      </div>`;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ─── Main render ──────────────────────────────────────────────
+  function renderResults(data) {
+    const { summary, results } = data;
+
+    // Update tiles
+    document.getElementById('s-total').textContent   = summary.total;
+    document.getElementById('s-met').textContent     = summary.met;
+    document.getElementById('s-vague').textContent   = summary.met_but_vague;
+    document.getElementById('s-partial').textContent = summary.partial;
+    document.getElementById('s-notmet').textContent  = summary.not_met;
+    document.getElementById('s-cond').textContent    = summary.with_conditions;
+    document.getElementById('results-count').textContent = `${results.length} rows`;
+
+    // Build table rows
+    const tbody = document.getElementById('results-body');
+    tbody.innerHTML = '';
+
+    if (!results.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No results returned.</td></tr>';
+      return;
+    }
+
+    results.forEach(r => {
+      // ── Requirement cell ──
+      const reqCell = `
+        <div class="req-text">${escapeHtml(r.requirement)}</div>
+        <div class="req-meta">
+          ${riskBadge(r.risk_level || 'STANDARD')}
+          <span class="badge badge-std">${escapeHtml(r.category || '')}</span>
+        </div>`;
+
+      // ── Verdict cell ──
+      const verdictCell = verdictBadge(r.verdict);
+
+      // ── Confidence cell ──
+      const confCell = confBar(r.confidence || 0);
+
+      // ── Detail cell: excerpt + hedge phrases + conditions ──
+      let detailCell = '';
+
+      if (r.best_match_excerpt) {
+        detailCell += `<div class="excerpt">"${escapeHtml(r.best_match_excerpt)}"</div>`;
       }
-    });
 
-    // --- Step 2 UI Logic ---
-    const propInput = document.getElementById("prop-file");
-    const propBtn = document.getElementById("validate-btn");
-    const propStatus = document.getElementById("prop-status");
-
-    propInput.addEventListener("change", () => {
-      propBtn.disabled = !propInput.files.length;
-    });
-
-    propBtn.addEventListener("click", async () => {
-      const file = propInput.files[0];
-      if (!file) return;
-
-      propBtn.disabled = true;
-      propStatus.innerHTML = "Processing vendor proposal...<br><i>(First run takes 10-15s to load the offline AI model)</i>";
-
-      const form = new FormData();
-      form.append("file", file);
-
-      try {
-        const res = await fetch("/validate", { method: "POST", body: form });
-        const data = await res.json();
-        
-        if (!res.ok) throw new Error(data.detail || "Error");
-
-        propStatus.textContent = "";
-
-        // Render stats
-        document.getElementById("prop-results").classList.remove("hidden");
-        document.getElementById("stats-bar").innerHTML = `
-          <div>Total: ${data.summary.total}</div>
-          <div style="color: #166534;">✅ Met: ${data.summary.met}</div>
-          <div style="color: #854d0e;">⚠️ Partial: ${data.summary.partial}</div>
-          <div style="color: #991b1b;">❌ Missing: ${data.summary.not_met}</div>
-        `;
-
-        // Render table
-        const tbody = document.getElementById("prop-body");
-        tbody.innerHTML = "";
-        
-        data.results.forEach(r => {
-          let badge = `<span class="badge b-missing">Missing</span>`;
-          if (r.verdict === "MET") badge = `<span class="badge b-met">Met</span>`;
-          if (r.verdict === "PARTIAL") badge = `<span class="badge b-partial">Partial</span>`;
-          
-          let excerptHtml = r.best_match_excerpt ? `<div class="excerpt">"${r.best_match_excerpt}"</div>` : `<span style="color:#aaa;">No related text found.</span>`;
-          
-          tbody.innerHTML += `<tr>
-            <td>${r.id}</td>
-            <td>${r.requirement}</td>
-            <td>${badge}</td>
-            <td>${r.confidence}%</td>
-            <td>${excerptHtml}</td>
-          </tr>`;
+      // Hedge phrases
+      if (r.is_vague && r.hedge_phrases_found && r.hedge_phrases_found.length) {
+        detailCell += `<div class="hedge-list">`;
+        r.hedge_phrases_found.forEach(p => {
+          detailCell += `<span class="hedge-item">⚠ Hedge phrase: "<em>${escapeHtml(p)}</em>"</span>`;
         });
-        
-      } catch (err) {
-        propStatus.textContent = "Network error: " + err.message;
-      } finally {
-        propBtn.disabled = false;
+        detailCell += `</div>`;
       }
+
+      // Conditions
+      if (r.has_conditions && r.conditions_found && r.conditions_found.length) {
+        detailCell += `<div class="cond-list">`;
+        r.conditions_found.forEach(c => {
+          detailCell += `<span class="cond-item">🔵 Condition: "<em>${escapeHtml(c)}</em>"</span>`;
+        });
+        detailCell += `</div>`;
+      }
+
+      if (!detailCell) {
+        detailCell = `<span style="color:var(--text-muted);font-size:.775rem">—</span>`;
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:var(--text-muted);font-weight:600">${r.id}</td>
+        <td>${reqCell}</td>
+        <td>${verdictCell}</td>
+        <td>${confCell}</td>
+        <td>${detailCell}</td>`;
+      tbody.appendChild(tr);
     });
-  </script>
+
+    // Show section
+    document.getElementById('results-section').style.display = 'block';
+    document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+</script>
 
 </body>
 </html>
