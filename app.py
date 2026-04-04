@@ -3,11 +3,12 @@ from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from utils import extract_text_from_pdf
 from extractor import extract_requirements
 from matcher import match_requirements
+from reporter import generate_csv, generate_pdf
 
 BASE_DIR = Path(__file__).parent
 
@@ -17,6 +18,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 current_requirements = []
+last_validation: dict = {}   # stores full /validate response for download endpoints
 
 
 @app.get("/")
@@ -48,7 +50,7 @@ async def upload_rfp(file: UploadFile = File(...)):
 
 @app.post("/validate")
 async def validate_proposal(file: UploadFile = File(...)):
-    global current_requirements
+    global current_requirements, last_validation
 
     if not current_requirements:
         raise HTTPException(status_code=400, detail="No requirements loaded. Please upload an RFP first.")
@@ -86,7 +88,7 @@ async def validate_proposal(file: UploadFile = File(...)):
     ]
     overall_status = "DISQUALIFIED" if disqualifying_failures else "PASSED"
 
-    return {
+    payload = {
         "status": "ok",
         "overall_status": overall_status,
         "disqualifying_failures": disqualifying_failures,
@@ -98,5 +100,40 @@ async def validate_proposal(file: UploadFile = File(...)):
             "met_but_vague":   met_but_vague,
             "with_conditions": with_conditions,
         },
-        "results": results
+        "results": results,
     }
+    last_validation = payload
+    return payload
+
+
+@app.get("/download-csv")
+def download_csv():
+    if not last_validation:
+        raise HTTPException(status_code=400, detail="No validation run yet. Please validate a proposal first.")
+    csv_bytes = generate_csv(
+        last_validation["results"],
+        last_validation["summary"],
+        last_validation["overall_status"],
+    )
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=compliance_report.csv"},
+    )
+
+
+@app.get("/download-pdf")
+def download_pdf():
+    if not last_validation:
+        raise HTTPException(status_code=400, detail="No validation run yet. Please validate a proposal first.")
+    pdf_bytes = generate_pdf(
+        last_validation["results"],
+        last_validation["summary"],
+        last_validation["overall_status"],
+        last_validation["disqualifying_failures"],
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=compliance_report.pdf"},
+    )

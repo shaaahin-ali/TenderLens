@@ -322,7 +322,29 @@
     .hedge-item { font-size: .72rem; color: var(--vague); }
     .cond-item  { font-size: .72rem; color: #38bdf8; }
 
-    /* ─── Empty state ──────────────────────────────────────────── */
+    .download-bar {
+      display: none;
+      gap: .75rem;
+      margin-bottom: 1.5rem;
+    }
+    .btn-dl {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .6rem 1.25rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: .8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color .2s, background .2s;
+      text-decoration: none;
+    }
+    .btn-dl:hover { border-color: var(--accent); background: var(--surface2); }
+    .btn-dl.pdf   { border-color: var(--accent); background: var(--accent-glow); color: #a5b4fc; }
     .empty-row td {
       text-align: center;
       color: var(--text-muted);
@@ -386,6 +408,12 @@
 
     <!-- Passed banner -->
     <div id="passed-banner">✅ Vendor passed all disqualifying checks. Full compliance review below.</div>
+
+    <!-- Download buttons (shown after validation) -->
+    <div id="download-bar" class="download-bar">
+      <a id="dl-csv" href="/download-csv" class="btn-dl" download>⬇ Download CSV</a>
+      <a id="dl-pdf" href="/download-pdf" class="btn-dl pdf" download>📄 Download PDF Report</a>
+    </div>
 
     <!-- Summary tiles -->
     <div class="summary-bar">
@@ -664,6 +692,7 @@
     });
 
     document.getElementById('results-section').style.display = 'block';
+    document.getElementById('download-bar').style.display    = 'flex';
     document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 </script>
