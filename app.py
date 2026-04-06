@@ -1,9 +1,12 @@
 import shutil
 from pathlib import Path
+from report import generate_report
+from fastapi.responses import FileResponse
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from utils import extract_text_from_pdf
 from extractor import extract_requirements
@@ -13,6 +16,14 @@ from reporter import generate_csv, generate_pdf
 BASE_DIR = Path(__file__).parent
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 (BASE_DIR / "data").mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -137,3 +148,12 @@ def download_pdf():
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=compliance_report.pdf"},
     )
+@app.post("/generate-report")
+def create_report():
+    # Use your actual results here
+    results = GLOBAL_RESULTS   # or however you're storing it
+    
+    file_path = "report.pdf"
+    generate_report(results, file_path)
+    
+    return FileResponse(file_path, media_type='application/pdf', filename="report.pdf")
