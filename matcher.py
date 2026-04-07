@@ -178,11 +178,17 @@ def match_requirements(requirements: list[dict], proposal_text: str, mode: str =
     if not proposal_chunks:
         return []
 
+    # Encode the entire proposal text (will be chunked by BATCH_SIZE inside encode_texts)
     chunk_embeddings = encode_texts(proposal_chunks)
+    
+    # Pre-encode all requirement texts at once to avoid n-factor API latency
+    req_texts = [req["requirement"] for req in requirements]
+    all_req_embeddings = encode_texts(req_texts)
+    
     results = []
 
-    for req in requirements:
-        req_emb = encode_texts([req["requirement"]])[0]
+    for idx, req in enumerate(requirements):
+        req_emb = all_req_embeddings[idx]
         cosine_scores = compute_similarity(req_emb, chunk_embeddings)
 
         best_idx = cosine_scores.argmax().item()
