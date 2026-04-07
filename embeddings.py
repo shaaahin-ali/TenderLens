@@ -11,8 +11,8 @@ import numpy as np
 import httpx
 from typing import List
 
-# HuggingFace Router API endpoint (api-inference is deprecated)
-HF_API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2"
+# HuggingFace Router API endpoint for Feature Extraction (Embeddings)
+HF_API_URL = "https://router.huggingface.co/hf-inference/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
 HF_API_KEY = os.getenv("HF_API_KEY")
 
 # Fallback to local model if API fails (default FALSE for production to save RAM)
