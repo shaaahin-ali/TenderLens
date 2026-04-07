@@ -99,6 +99,34 @@ interface ValidationResponse {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+async function parseApiResponse(response: Response): Promise<unknown> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return { detail: text || `HTTP ${response.status}` };
+}
+
+function getErrorDetail(payload: unknown): string | undefined {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "detail" in payload &&
+    typeof (payload as { detail?: unknown }).detail === "string"
+  ) {
+    return (payload as { detail: string }).detail;
+  }
+  return undefined;
+}
+
+function isValidationResponse(payload: unknown): payload is ValidationResponse {
+  if (!payload || typeof payload !== "object") return false;
+  const obj = payload as Partial<ValidationResponse>;
+  return Boolean(obj.summary && obj.mode && obj.results);
+}
+
 const VERDICT_CONFIG: Record<
   Verdict,
   { label: string; color: string; bg: string; icon: React.ReactNode }
@@ -588,7 +616,10 @@ export default function ValidatorView() {
         method: "POST",
         body: formData,
       });
-      const data = await response.json();
+      const data = (await parseApiResponse(response)) as {
+        total?: number;
+        detail?: string;
+      };
       if (!response.ok) throw new Error(data.detail || "Upload failed");
       setRfpStatus({
         type: "ok",
@@ -625,11 +656,17 @@ export default function ValidatorView() {
         method: "POST",
         body: formData,
       });
-      const data: ValidationResponse = await response.json();
-      if (!response.ok)
+      const data = (await parseApiResponse(response)) as
+        | ValidationResponse
+        | { detail?: string };
+      if (!response.ok) {
         throw new Error(
-          (data as unknown as { detail: string }).detail || "Validation failed",
+          getErrorDetail(data) || `Validation failed (${response.status})`,
         );
+      }
+      if (!isValidationResponse(data)) {
+        throw new Error("Validation response format is invalid.");
+      }
       setResults(data);
       setPropStatus({
         type: "ok",

@@ -93,7 +93,13 @@ async def validate_proposal(
     if not proposal_text.strip():
         raise HTTPException(status_code=400, detail="Proposal PDF is empty.")
 
-    results = match_requirements(current_requirements, proposal_text, mode=mode_key)
+    try:
+        results = match_requirements(current_requirements, proposal_text, mode=mode_key)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Validation engine failed: {exc}",
+        ) from exc
 
     met = sum(1 for result in results if result["verdict"] == "MET")
     partial = sum(1 for result in results if result["verdict"] == "PARTIAL")
