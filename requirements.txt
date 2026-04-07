@@ -2,5 +2,8 @@ fastapi
 uvicorn
 pdfplumber
 python-multipart
-sentence-transformers
 reportlab
+gunicorn
+python-dotenv
+httpx
+numpy

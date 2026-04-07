@@ -1,430 +1,469 @@
 """
-reporter.py — Report Generator
+reporter.py - Report Generator
 
-Produces both a CSV and a structured PDF from a completed validation run.
-No external services. Uses:
-  - Python stdlib `csv`  for CSV
-  - reportlab            for PDF
-
-PDF sections:
-  1. Header (title, timestamp, disclaimer)
-  2. Summary (counts, overall compliance score, disqualification status)
-  3. Detailed results table
-  4. Risk flags (vague + conditional items surfaced separately)
-  5. Final recommendation
-  6. Legal disclaimer footer
+Produces CSV and PDF exports from a completed validation run.
 """
 
 import csv
 import io
 from datetime import datetime
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
-    BaseDocTemplate, Frame, HRFlowable, PageTemplate,
-    Paragraph, Spacer, Table, TableStyle,
+    BaseDocTemplate,
+    Frame,
+    HRFlowable,
+    PageTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
 )
 
-# ── Colour palette (matches the dark UI in spirit, but PDF-safe) ──────────────
-C_DARK   = colors.HexColor("#1a1d27")
+C_DARK = colors.HexColor("#1a1d27")
 C_ACCENT = colors.HexColor("#6c63ff")
-C_MET    = colors.HexColor("#22c55e")
-C_VAGUE  = colors.HexColor("#f59e0b")
-C_PART   = colors.HexColor("#3b82f6")
+C_MET = colors.HexColor("#22c55e")
+C_WARN = colors.HexColor("#f59e0b")
+C_PART = colors.HexColor("#3b82f6")
 C_NOTMET = colors.HexColor("#ef4444")
-C_DISQ   = colors.HexColor("#ef4444")
-C_HIGH   = colors.HexColor("#f97316")
-C_MUTED  = colors.HexColor("#7c82a0")
-C_ROW1   = colors.HexColor("#f8f8fc")
-C_ROW2   = colors.white
-C_HEAD   = colors.HexColor("#eeeef8")
+C_MUTED = colors.HexColor("#7c82a0")
+C_ROW1 = colors.HexColor("#f8f8fc")
+C_ROW2 = colors.white
 
 VERDICT_COLOR = {
-    "MET":           C_MET,
-    "MET_BUT_VAGUE": C_VAGUE,
-    "PARTIAL":       C_PART,
-    "NOT_MET":       C_NOTMET,
+    "MET": C_MET,
+    "MET_BUT_VAGUE": C_WARN,
+    "PARTIAL": C_PART,
+    "NOT_MET": C_NOTMET,
 }
+
 VERDICT_LABEL = {
-    "MET":           "Met",
+    "MET": "Met",
     "MET_BUT_VAGUE": "Met (Vague)",
-    "PARTIAL":       "Partial",
-    "NOT_MET":       "Not Met",
-}
-RISK_COLOR = {
-    "DISQUALIFYING": C_DISQ,
-    "HIGH_RISK":     C_HIGH,
-    "STANDARD":      C_MUTED,
+    "PARTIAL": "Partial",
+    "NOT_MET": "Not Met",
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Shared helper
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _overall_compliance_score(results: list[dict]) -> int:
-    """
-    Weighted compliance score:
-      MET           → 1.00
-      MET_BUT_VAGUE → 0.75  (topic covered but commitment is weak)
-      PARTIAL       → 0.50
-      NOT_MET       → 0.00
-    """
-    if not results:
-        return 0
-    weights = {"MET": 1.0, "MET_BUT_VAGUE": 0.75, "PARTIAL": 0.50, "NOT_MET": 0.0}
-    total = sum(weights.get(r["verdict"], 0) for r in results)
-    return int((total / len(results)) * 100)
+def _yes_no(value: bool) -> str:
+    return "Yes" if value else "No"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CSV Export
-# ─────────────────────────────────────────────────────────────────────────────
-
-def generate_csv(results: list[dict], summary: dict, overall_status: str) -> bytes:
-    """
-    Returns raw CSV bytes ready to stream to the client.
-    Columns: ID, Requirement, Category, Risk Level, Verdict,
-             Semantic Match %, Compliance Score %, Vague, Hedge Phrases,
-             Has Conditions, Conditions, Match Excerpt
-    """
+def generate_csv(
+    results: list[dict],
+    summary: dict,
+    overall_status: str,
+    mode: str,
+    overall_score: int,
+    critical_failure: dict | None,
+    category_breakdown: list[dict],
+    top_issues: list[dict],
+) -> bytes:
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # ── Metadata header rows ──
     writer.writerow(["Tender Compliance Report"])
     writer.writerow(["Generated", datetime.now().strftime("%Y-%m-%d %H:%M")])
+    writer.writerow(["Validation Mode", mode.title()])
     writer.writerow(["Overall Status", overall_status])
-    writer.writerow(["Overall Compliance Score", f"{_overall_compliance_score(results)}%"])
+    writer.writerow(["Overall Compliance Score", f"{overall_score}%"])
+    if critical_failure:
+        writer.writerow(["Critical Failure", critical_failure["message"]])
     writer.writerow([])
 
-    # ── Summary block ──
     writer.writerow(["Summary"])
-    for k, v in summary.items():
-        writer.writerow([k.replace("_", " ").title(), v])
+    for key, value in summary.items():
+        writer.writerow([key.replace("_", " ").title(), value])
     writer.writerow([])
 
-    # ── Column headers ──
+    writer.writerow(["Category Breakdown"])
+    writer.writerow(["Category", "Score %", "Total", "Met", "Partial", "Not Met", "Weak Commitments"])
+    for item in category_breakdown:
+        writer.writerow([
+            item["category"],
+            item["score"],
+            item["total"],
+            item["met"],
+            item["partial"],
+            item["not_met"],
+            item["weak_commitments"],
+        ])
+    writer.writerow([])
+
+    writer.writerow(["Top 3 Weakest Areas"])
+    writer.writerow(["Priority", "Issue", "Detail", "Severity"])
+    for index, issue in enumerate(top_issues, start=1):
+        writer.writerow([index, issue["title"], issue["detail"], issue["severity"]])
+    writer.writerow([])
+
     writer.writerow([
-        "ID", "Requirement", "Category", "Risk Level", "Verdict",
-        "Semantic Match %", "Compliance Score %",
-        "Vague?", "Hedge Phrases",
-        "Has Conditions?", "Conditions",
+        "ID",
+        "Requirement",
+        "Category",
+        "Risk Level",
+        "Base Verdict",
+        "Final Verdict",
+        "Semantic Match %",
+        "Compliance Score %",
+        "Explicit Commitment?",
+        "Commitment Phrases",
+        "Vague?",
+        "Hedge Phrases",
+        "Has Conditions?",
+        "Conditions",
+        "Why This Verdict?",
+        "Why This Matters",
         "Match Excerpt",
     ])
 
-    # ── Data rows ──
-    for r in results:
+    for result in results:
         writer.writerow([
-            r.get("id", ""),
-            r.get("requirement", ""),
-            r.get("category", ""),
-            r.get("risk_level", "STANDARD"),
-            VERDICT_LABEL.get(r.get("verdict", ""), r.get("verdict", "")),
-            r.get("semantic_similarity", ""),
-            r.get("compliance_score", ""),
-            "Yes" if r.get("is_vague") else "No",
-            "; ".join(r.get("hedge_phrases_found", [])),
-            "Yes" if r.get("has_conditions") else "No",
-            "; ".join(r.get("conditions_found", [])),
-            r.get("best_match_excerpt", ""),
+            result.get("id", ""),
+            result.get("requirement", ""),
+            result.get("category", ""),
+            result.get("risk_level", "STANDARD"),
+            VERDICT_LABEL.get(result.get("base_verdict", ""), result.get("base_verdict", "")),
+            VERDICT_LABEL.get(result.get("verdict", ""), result.get("verdict", "")),
+            result.get("semantic_similarity", ""),
+            result.get("compliance_score", ""),
+            _yes_no(result.get("explicit_commitment_found", False)),
+            "; ".join(result.get("commitment_phrases_found", [])),
+            _yes_no(result.get("is_vague", False)),
+            "; ".join(result.get("hedge_phrases_found", [])),
+            _yes_no(result.get("has_conditions", False)),
+            "; ".join(result.get("conditions_found", [])),
+            " | ".join(result.get("verdict_reasons", [])),
+            result.get("why_this_matters", ""),
+            result.get("best_match_excerpt", ""),
         ])
 
     writer.writerow([])
-    writer.writerow(["DISCLAIMER: This report is generated by an automated AI tool for"
-                     " informational purposes only. It does not constitute legal or"
-                     " procurement advice. Final decisions remain the responsibility"
-                     " of the procuring organisation."])
+    writer.writerow([
+        "DISCLAIMER",
+        "This report is generated by an automated AI tool for informational purposes only. "
+        "It does not constitute legal or procurement advice.",
+    ])
 
-    return output.getvalue().encode("utf-8-sig")  # BOM for Excel compatibility
+    return output.getvalue().encode("utf-8-sig")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PDF Export
-# ─────────────────────────────────────────────────────────────────────────────
 
 def generate_pdf(
     results: list[dict],
     summary: dict,
     overall_status: str,
     disqualifying_failures: list[dict],
+    mode: str,
+    overall_score: int,
+    critical_failure: dict | None,
+    category_breakdown: list[dict],
+    top_issues: list[dict],
 ) -> bytes:
-    """
-    Returns raw PDF bytes ready to stream to the client.
-    """
     buffer = io.BytesIO()
-
-    # ── Page layout ──────────────────────────────────────────────────────────
     doc = BaseDocTemplate(
         buffer,
         pagesize=A4,
-        leftMargin=2 * cm,
-        rightMargin=2 * cm,
-        topMargin=2.5 * cm,
-        bottomMargin=2 * cm,
+        leftMargin=1.7 * cm,
+        rightMargin=1.7 * cm,
+        topMargin=2.3 * cm,
+        bottomMargin=1.8 * cm,
     )
 
     page_w, page_h = A4
-    usable_w = page_w - 4 * cm
+    usable_w = page_w - doc.leftMargin - doc.rightMargin
 
-    def _header_footer(canvas, doc):
+    def _header_footer(canvas, document):
         canvas.saveState()
-        # Header bar
         canvas.setFillColor(C_ACCENT)
-        canvas.rect(2 * cm, page_h - 1.8 * cm, usable_w, 0.35 * cm, fill=1, stroke=0)
-        # Footer
+        canvas.rect(doc.leftMargin, page_h - 1.4 * cm, usable_w, 0.25 * cm, fill=1, stroke=0)
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(C_MUTED)
-        canvas.drawString(2 * cm, 1.3 * cm, "Tender Compliance Validator — Automated Report")
+        canvas.drawString(doc.leftMargin, 1.2 * cm, "Tender Compliance Validator - Automated Report")
         canvas.drawRightString(
-            page_w - 2 * cm, 1.3 * cm,
-            f"Page {doc.page}  |  Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            page_w - doc.rightMargin,
+            1.2 * cm,
+            f"Page {document.page} | Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         )
         canvas.restoreState()
 
-    frame = Frame(doc.leftMargin, doc.bottomMargin,
-                  usable_w, page_h - 4.5 * cm, id="main")
+    frame = Frame(doc.leftMargin, doc.bottomMargin, usable_w, page_h - 4.1 * cm, id="main")
     doc.addPageTemplates([PageTemplate(id="base", frames=[frame], onPage=_header_footer)])
 
-    # ── Styles ────────────────────────────────────────────────────────────────
     base = getSampleStyleSheet()
+    s_title = ParagraphStyle(
+        "title",
+        parent=base["Title"],
+        fontSize=20,
+        textColor=C_ACCENT,
+        alignment=TA_LEFT,
+        spaceAfter=4,
+    )
+    s_sub = ParagraphStyle(
+        "sub",
+        parent=base["Normal"],
+        fontSize=9,
+        textColor=C_MUTED,
+        leading=12,
+        spaceAfter=12,
+    )
+    s_section = ParagraphStyle(
+        "section",
+        parent=base["Heading2"],
+        fontSize=12,
+        textColor=C_DARK,
+        spaceBefore=16,
+        spaceAfter=8,
+    )
+    s_body = ParagraphStyle(
+        "body",
+        parent=base["Normal"],
+        fontSize=8.5,
+        textColor=colors.HexColor("#22263a"),
+        leading=12,
+    )
+    s_small = ParagraphStyle(
+        "small",
+        parent=base["Normal"],
+        fontSize=7.5,
+        textColor=colors.HexColor("#334155"),
+        leading=10,
+    )
+    s_muted = ParagraphStyle(
+        "muted",
+        parent=base["Normal"],
+        fontSize=7.2,
+        textColor=C_MUTED,
+        leading=10,
+    )
+    s_alert = ParagraphStyle(
+        "alert",
+        parent=base["Normal"],
+        fontSize=9,
+        textColor=C_NOTMET,
+        leading=13,
+    )
 
-    sTitle = ParagraphStyle("sTitle", parent=base["Title"],
-                            fontSize=22, textColor=C_ACCENT,
-                            spaceAfter=4, alignment=TA_LEFT, fontName="Helvetica-Bold")
-    sSub   = ParagraphStyle("sSub",   parent=base["Normal"],
-                            fontSize=9, textColor=C_MUTED,
-                            spaceAfter=16, alignment=TA_LEFT)
-    sSec   = ParagraphStyle("sSec",   parent=base["Heading2"],
-                            fontSize=12, textColor=C_DARK,
-                            spaceBefore=18, spaceAfter=8, fontName="Helvetica-Bold")
-    sBody  = ParagraphStyle("sBody",  parent=base["Normal"],
-                            fontSize=8.5, textColor=colors.HexColor("#22263a"),
-                            leading=13)
-    sSmall = ParagraphStyle("sSmall", parent=base["Normal"],
-                            fontSize=7.5, textColor=C_MUTED, leading=11)
-    sDisq  = ParagraphStyle("sDisq",  parent=base["Normal"],
-                            fontSize=9, textColor=C_DISQ,
-                            leading=14, fontName="Helvetica-Bold")
-    sDisqBody = ParagraphStyle("sDisqBody", parent=base["Normal"],
-                               fontSize=8.5, textColor=colors.HexColor("#dc2626"), leading=13)
-    sRec   = ParagraphStyle("sRec",   parent=base["Normal"],
-                            fontSize=9, textColor=colors.HexColor("#1e293b"),
-                            leading=14, fontName="Helvetica-Bold")
-    sDisc  = ParagraphStyle("sDisc",  parent=base["Normal"],
-                            fontSize=7, textColor=C_MUTED, leading=10)
-
-    story = []
-
-    # ─── Section 1: Title ────────────────────────────────────────────────────
-    story.append(Paragraph("Tender Compliance Report", sTitle))
-    story.append(Paragraph(
-        f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M')}  |  "
-        f"Tool: Tender Compliance Validator (Free Edition)", sSub
-    ))
-    story.append(HRFlowable(width="100%", thickness=1, color=C_ACCENT, spaceAfter=14))
-
-    # ─── Section 2: Summary ──────────────────────────────────────────────────
-    story.append(Paragraph("1. Summary", sSec))
-
-    score = _overall_compliance_score(results)
-    status_color = C_DISQ if overall_status == "DISQUALIFIED" else C_MET
-    status_label = "❌  DISQUALIFIED" if overall_status == "DISQUALIFIED" else "✅  PASSED"
-
-    sum_data = [
-        ["Metric", "Value"],
-        ["Total Requirements",  str(summary.get("total", 0))],
-        ["Met",                 str(summary.get("met", 0))],
-        ["Met (Vague)",         str(summary.get("met_but_vague", 0))],
-        ["Partial",             str(summary.get("partial", 0))],
-        ["Not Met",             str(summary.get("not_met", 0))],
-        ["Conditional Matches", str(summary.get("with_conditions", 0))],
-        ["Overall Compliance Score", f"{score}%"],
-        ["Vendor Status",       status_label],
+    story = [
+        Paragraph("Tender Compliance Report", s_title),
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M')} | "
+            f"Validation Mode: {escape(mode.title())} | Overall Score: {overall_score}%",
+            s_sub,
+        ),
+        HRFlowable(width="100%", thickness=1, color=C_ACCENT, spaceAfter=10),
     ]
 
-    sum_table = Table(sum_data, colWidths=[usable_w * 0.6, usable_w * 0.4])
-    sum_style = TableStyle([
-        ("BACKGROUND",   (0, 0), (-1, 0), C_ACCENT),
-        ("TEXTCOLOR",    (0, 0), (-1, 0), colors.white),
-        ("FONTNAME",     (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE",     (0, 0), (-1, 0), 9),
+    story.append(Paragraph("1. Executive Summary", s_section))
+    summary_rows = [
+        ["Metric", "Value"],
+        ["Vendor Status", overall_status],
+        ["Validation Mode", mode.title()],
+        ["Overall Compliance Score", f"{overall_score}%"],
+        ["Total Requirements", str(summary.get("total", 0))],
+        ["Met", str(summary.get("met", 0))],
+        ["Partial", str(summary.get("partial", 0))],
+        ["Not Met", str(summary.get("not_met", 0))],
+        ["Vague Matches", str(summary.get("met_but_vague", 0))],
+        ["Conditional Matches", str(summary.get("with_conditions", 0))],
+    ]
+    summary_table = Table(summary_rows, colWidths=[usable_w * 0.58, usable_w * 0.42])
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), C_ACCENT),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [C_ROW1, C_ROW2]),
-        ("FONTSIZE",     (0, 1), (-1, -1), 8.5),
-        ("TEXTCOLOR",    (1, -1), (1, -1), status_color),
-        ("FONTNAME",     (1, -1), (1, -1), "Helvetica-Bold"),
-        ("TEXTCOLOR",    (1, -2), (1, -2),
-         colors.HexColor("#15803d") if score >= 70 else (C_VAGUE if score >= 50 else C_NOTMET)),
-        ("FONTNAME",     (1, -2), (1, -2), "Helvetica-Bold"),
-        ("ALIGN",        (1, 0), (1, -1), "CENTER"),
-        ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
-        ("ROWHEIGHT",   (0, 0), (-1, -1), 18),
-        ("GRID",         (0, 0), (-1, -1), 0.4, colors.HexColor("#d1d5db")),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-    ])
-    sum_table.setStyle(sum_style)
-    story.append(sum_table)
+        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d1d5db")),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(summary_table)
 
-    # Disqualification alert box
-    if overall_status == "DISQUALIFIED":
-        story.append(Spacer(1, 12))
-        story.append(Paragraph("⛔  DISQUALIFICATION ALERT", sDisq))
-        for f in disqualifying_failures:
+    if critical_failure:
+        story.append(Spacer(1, 10))
+        story.append(Paragraph("CRITICAL FAILURE", s_alert))
+        story.append(Paragraph(escape(critical_failure["message"]), s_alert))
+        for failure in disqualifying_failures:
             story.append(Paragraph(
-                f"• [Req #{f['id']}] {f['requirement']}  →  {VERDICT_LABEL.get(f['verdict'], f['verdict'])}",
-                sDisqBody
+                f"- Req #{failure['id']}: {escape(failure['requirement'])} "
+                f"({escape(VERDICT_LABEL.get(failure['verdict'], failure['verdict']))})",
+                s_small,
             ))
 
-    # ─── Section 3: Detailed Results Table ───────────────────────────────────
-    story.append(Paragraph("2. Detailed Results", sSec))
-
-    col_w = [
-        usable_w * 0.04,  # #
-        usable_w * 0.31,  # Requirement
-        usable_w * 0.13,  # Category
-        usable_w * 0.10,  # Risk
-        usable_w * 0.12,  # Verdict
-        usable_w * 0.09,  # Semantic %
-        usable_w * 0.09,  # Compliance %
-        usable_w * 0.12,  # Evidence
-    ]
-
-    tbl_data = [[
-        Paragraph("#", sSmall),
-        Paragraph("Requirement", sSmall),
-        Paragraph("Category", sSmall),
-        Paragraph("Risk", sSmall),
-        Paragraph("Verdict", sSmall),
-        Paragraph("Semantic\nMatch", sSmall),
-        Paragraph("Compliance\nScore", sSmall),
-        Paragraph("Evidence", sSmall),
-    ]]
-
-    row_colors = []
-    for i, r in enumerate(results):
-        v = r.get("verdict", "NOT_MET")
-        vc = VERDICT_COLOR.get(v, C_MUTED)
-        rc = RISK_COLOR.get(r.get("risk_level", "STANDARD"), C_MUTED)
-
-        excerpt = r.get("best_match_excerpt", "") or "—"
-        if len(excerpt) > 90:
-            excerpt = excerpt[:87] + "…"
-
-        sem  = r.get("semantic_similarity", 0)
-        comp = r.get("compliance_score", 0)
-
-        tbl_data.append([
-            Paragraph(str(r.get("id", "")), sSmall),
-            Paragraph(r.get("requirement", ""), sSmall),
-            Paragraph(r.get("category", "General"), sSmall),
-            Paragraph(r.get("risk_level", "STANDARD").replace("_", " ").title(), sSmall),
-            Paragraph(f'<font color="{vc.hexval()}">{VERDICT_LABEL.get(v, v)}</font>', sSmall),
-            Paragraph(f"{sem}%", sSmall),
-            Paragraph(f"{comp}%", sSmall),
-            Paragraph(f'<i>{excerpt}</i>', sSmall),
+    story.append(Paragraph("2. Category Score Breakdown", s_section))
+    category_rows = [["Category", "Score", "Met", "Partial", "Not Met", "Weak"]]
+    for item in category_breakdown:
+        category_rows.append([
+            item["category"],
+            f"{item['score']}%",
+            str(item["met"]),
+            str(item["partial"]),
+            str(item["not_met"]),
+            str(item["weak_commitments"]),
         ])
-        row_colors.append(C_ROW1 if i % 2 == 0 else C_ROW2)
+    category_table = Table(
+        category_rows,
+        colWidths=[
+            usable_w * 0.34,
+            usable_w * 0.12,
+            usable_w * 0.12,
+            usable_w * 0.12,
+            usable_w * 0.12,
+            usable_w * 0.12,
+        ],
+        repeatRows=1,
+    )
+    category_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), C_DARK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [C_ROW1, C_ROW2]),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#d1d5db")),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(category_table)
 
-    results_table = Table(tbl_data, colWidths=col_w, repeatRows=1)
-    rt_style = [
-        ("BACKGROUND",   (0, 0), (-1, 0), C_DARK),
-        ("TEXTCOLOR",    (0, 0), (-1, 0), colors.white),
-        ("FONTNAME",     (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE",     (0, 0), (-1, 0), 7.5),
-        ("ALIGN",        (0, 0), (-1, 0), "CENTER"),
-        ("VALIGN",       (0, 0), (-1, -1), "TOP"),
-        ("GRID",         (0, 0), (-1, -1), 0.3, colors.HexColor("#d1d5db")),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 5),
+    story.append(Paragraph("3. Top 3 Weakest Areas", s_section))
+    if top_issues:
+        for index, issue in enumerate(top_issues, start=1):
+            story.append(Paragraph(
+                f"<b>{index}. {escape(issue['title'])}</b> - {escape(issue['detail'])}",
+                s_body,
+            ))
+    else:
+        story.append(Paragraph("No material weaknesses identified.", s_body))
+
+    story.append(Paragraph("4. Detailed Results", s_section))
+    result_rows = [[
+        "#",
+        "Requirement",
+        "Category",
+        "Verdict",
+        "Semantic",
+        "Compliance",
+    ]]
+    for result in results:
+        result_rows.append([
+            str(result.get("id", "")),
+            Paragraph(escape(result.get("requirement", "")), s_small),
+            Paragraph(escape(result.get("category", "General")), s_small),
+            Paragraph(
+                f'<font color="{VERDICT_COLOR.get(result.get("verdict"), C_NOTMET).hexval()}">'
+                f"{escape(VERDICT_LABEL.get(result.get('verdict', ''), result.get('verdict', '')))}</font>",
+                s_small,
+            ),
+            f"{result.get('semantic_similarity', 0)}%",
+            f"{result.get('compliance_score', 0)}%",
+        ])
+    result_table = Table(
+        result_rows,
+        colWidths=[
+            usable_w * 0.05,
+            usable_w * 0.41,
+            usable_w * 0.18,
+            usable_w * 0.14,
+            usable_w * 0.10,
+            usable_w * 0.12,
+        ],
+        repeatRows=1,
+    )
+    result_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), C_DARK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [C_ROW1, C_ROW2]),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#d1d5db")),
+        ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+        ("ALIGN", (3, 0), (-1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING",   (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 5),
-    ]
-    for i, bg in enumerate(row_colors, start=1):
-        rt_style.append(("BACKGROUND", (0, i), (-1, i), bg))
-    results_table.setStyle(TableStyle(rt_style))
-    story.append(results_table)
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(result_table)
 
-    # ─── Section 4: Risk Flags ───────────────────────────────────────────────
-    story.append(Paragraph("3. Risk Flags", sSec))
+    story.append(Paragraph("5. Why This Verdict", s_section))
+    for result in results:
+        verdict_text = VERDICT_LABEL.get(result.get("verdict", ""), result.get("verdict", ""))
+        story.append(Paragraph(
+            f"<b>Req #{result.get('id')}</b> - {escape(result.get('requirement', ''))} "
+            f"(<font color=\"{VERDICT_COLOR.get(result.get('verdict'), C_NOTMET).hexval()}\">{escape(verdict_text)}</font>)",
+            s_body,
+        ))
+        reasons = result.get("verdict_reasons", [])
+        if reasons:
+            story.append(Paragraph(
+                "<br/>".join(f"- {escape(reason)}" for reason in reasons),
+                s_small,
+            ))
+        story.append(Paragraph(
+            f"<b>Why this matters:</b> {escape(result.get('why_this_matters', ''))}",
+            s_muted,
+        ))
+        excerpt = result.get("best_match_excerpt", "")
+        if excerpt:
+            story.append(Paragraph(
+                f"<i>Evidence:</i> {escape(excerpt[:220])}",
+                s_muted,
+            ))
+        story.append(Spacer(1, 6))
 
-    vague_items = [r for r in results if r.get("is_vague")]
-    cond_items  = [r for r in results if r.get("has_conditions")]
-
-    if not vague_items and not cond_items:
-        story.append(Paragraph("No risk flags identified.", sBody))
-    else:
-        if vague_items:
-            story.append(Paragraph("Vague Commitments Detected", sRec))
-            for r in vague_items:
-                phrases = ", ".join(f'"{p}"' for p in r.get("hedge_phrases_found", []))
-                story.append(Paragraph(
-                    f"• Req #{r['id']}: {r['requirement'][:80]}…  →  Hedge phrases: {phrases}",
-                    sSmall
-                ))
-            story.append(Spacer(1, 6))
-
-        if cond_items:
-            story.append(Paragraph("Conditional Clauses Detected", sRec))
-            for r in cond_items:
-                clauses = "; ".join(f'"{c}"' for c in r.get("conditions_found", []))
-                story.append(Paragraph(
-                    f"• Req #{r['id']}: {r['requirement'][:80]}…  →  Conditions: {clauses}",
-                    sSmall
-                ))
-
-    # ─── Section 5: Final Recommendation ────────────────────────────────────
-    story.append(Paragraph("4. Final Recommendation", sSec))
-    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e2e8f0"), spaceAfter=8))
-
+    story.append(Paragraph("6. Final Recommendation", s_section))
     if overall_status == "DISQUALIFIED":
-        rec_text = (
-            f"<b>Vendor is NOT recommended.</b> The proposal failed {len(disqualifying_failures)} "
-            f"disqualifying requirement(s) — which are mandatory legal, licensing, or certification "
-            f"obligations. Failure to satisfy these is grounds for immediate bid rejection regardless "
-            f"of overall compliance score ({score}%)."
+        recommendation = (
+            f"<b>Vendor is not recommended.</b> {len(disqualifying_failures)} disqualifying "
+            "requirement(s) failed, so immediate rejection is recommended regardless of the overall score."
         )
-        rec_color = C_DISQ
-    elif score >= 80:
-        rec_text = (
-            f"<b>Vendor is recommended for further review.</b> The proposal demonstrates strong "
-            f"overall compliance ({score}%). Minor gaps identified should be clarified before contract award."
+        recommendation_color = C_NOTMET
+    elif overall_score >= 80:
+        recommendation = (
+            "<b>Vendor is recommended for further review.</b> Overall compliance is strong, with only limited gaps "
+            "that should be clarified before award."
         )
-        rec_color = C_MET
-    elif score >= 50:
-        rec_text = (
-            f"<b>Vendor requires clarification before recommendation.</b> Overall compliance score "
-            f"is {score}%, with notable partial matches and/or vague commitments. Outstanding items "
-            f"must be addressed in writing before contract award."
+        recommendation_color = C_MET
+    elif overall_score >= 50:
+        recommendation = (
+            "<b>Vendor needs clarification before recommendation.</b> Partial coverage and qualified language create "
+            "material review risk."
         )
-        rec_color = C_VAGUE
+        recommendation_color = C_WARN
     else:
-        rec_text = (
-            f"<b>Vendor is not recommended.</b> Overall compliance score is {score}%, indicating "
-            f"significant gaps across core requirements. Recommend rejection or re-submission."
+        recommendation = (
+            "<b>Vendor is not recommended.</b> Significant compliance gaps remain across key requirements."
         )
-        rec_color = C_NOTMET
+        recommendation_color = C_NOTMET
 
-    rec_style = ParagraphStyle("sRecColored", parent=sBody,
-                               textColor=rec_color, fontSize=9, leading=14)
-    story.append(Paragraph(rec_text, rec_style))
+    recommendation_style = ParagraphStyle(
+        "recommendation",
+        parent=s_body,
+        textColor=recommendation_color,
+        fontSize=9,
+        leading=13,
+    )
+    story.append(Paragraph(recommendation, recommendation_style))
 
-    # ─── Disclaimer ──────────────────────────────────────────────────────────
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 16))
     story.append(HRFlowable(width="100%", thickness=0.4, color=C_MUTED, spaceAfter=6))
     story.append(Paragraph(
         "DISCLAIMER: This report is generated by an automated AI tool for informational purposes only. "
-        "It does not constitute legal, procurement, or contractual advice. Semantic matching may not "
-        "capture all legal nuances. Final evaluation decisions remain the sole responsibility of the "
-        "procuring organisation and its qualified personnel.",
-        sDisc
+        "It does not constitute legal, procurement, or contractual advice. Final evaluation decisions remain "
+        "the responsibility of the procuring organisation.",
+        s_muted,
     ))
 
-    # ── Build ────────────────────────────────────────────────────────────────
     doc.build(story)
     buffer.seek(0)
     return buffer.read()
