@@ -7,3 +7,4 @@ gunicorn
 python-dotenv
 httpx
 numpy
+huggingface-hub
