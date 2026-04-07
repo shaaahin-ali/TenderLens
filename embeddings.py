@@ -46,7 +46,7 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def _get_embeddings_api(texts: List[str]) -> np.ndarray:
-    """Get embeddings from HuggingFace Inference API with retries."""
+    """Get embeddings from HuggingFace Inference API with retries and batching."""
     if not HF_API_KEY:
         raise RuntimeError(
             "HF_API_KEY missing. "
@@ -57,48 +57,74 @@ def _get_embeddings_api(texts: List[str]) -> np.ndarray:
         "Authorization": f"Bearer {HF_API_KEY}",
         "Content-Type": "application/json"
     }
-    payload = {"inputs": texts}
     
-    # Retry logic for 503 and transient errors
-    for attempt in range(3):
-        try:
-            response = httpx.post(
-                HF_API_URL,
-                headers=headers,
-                json=payload,
-                timeout=60.0  # Increased timeout for Render/Vercel
-            )
-            response.raise_for_status()
-            embeddings = response.json()
-            
-            # Hugging Face sometimes returns a dict with 'error' if model is loading
-            if isinstance(embeddings, dict) and "error" in embeddings:
-                error_msg = embeddings["error"]
-                if "is currently loading" in error_msg.lower():
-                    if attempt < 2:
-                        # Wait for model to load
-                        wait_time = embeddings.get("estimated_time", 20)
-                        print(f"HF Model loading, waiting {wait_time}s...")
-                        time.sleep(min(wait_time, 20))
-                        continue
-                raise RuntimeError(f"HF API returned error: {error_msg}")
+    # Hugging Face Inference API has payload limits. We must batch.
+    BATCH_SIZE = 50
+    all_embeddings = []
+    
+    # Truncate strings to ~2000 chars to avoid exceeding token lengths
+    safe_texts = [text[:2000] if len(text) > 2000 else text for text in texts]
+    
+    for i in range(0, len(safe_texts), BATCH_SIZE):
+        batch_texts = safe_texts[i:i + BATCH_SIZE]
+        # Include wait_for_model=True to prevent 503s
+        payload = {
+            "inputs": batch_texts,
+            "options": {"wait_for_model": True}
+        }
+        
+        # Retry logic for 503 and transient errors per batch
+        batch_success = False
+        for attempt in range(3):
+            try:
+                response = httpx.post(
+                    HF_API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0  # Increased timeout for Render/Vercel
+                )
+                response.raise_for_status()
+                embeddings = response.json()
                 
-            return np.array(embeddings)
+                # Hugging Face sometimes returns a dict with 'error' if model is loading
+                if isinstance(embeddings, dict) and "error" in embeddings:
+                    error_msg = embeddings["error"]
+                    if "is currently loading" in error_msg.lower():
+                        if attempt < 2:
+                            # Wait for model to load
+                            wait_time = embeddings.get("estimated_time", 20)
+                            print(f"HF Model loading, waiting {wait_time}s...")
+                            time.sleep(min(wait_time, 20))
+                            continue
+                    raise RuntimeError(f"HF API returned error: {error_msg}")
+                    
+                all_embeddings.extend(embeddings)
+                batch_success = True
+                break  # break retry loop on success
+                
+            except httpx.HTTPError as e:
+                # 400 errors usually mean payload issue, don't retry blindly
+                if isinstance(e, httpx.HTTPStatusError):
+                    if e.response.status_code == 503:
+                        if attempt < 2:
+                            time.sleep(5)
+                            continue
+                    elif e.response.status_code == 400:
+                        raise RuntimeError(f"HF API 400 Bad Request. Try reducing BATCH_SIZE. Detail: {e.response.text}")
+                
+                if attempt == 2:
+                    raise RuntimeError(f"HF API error on batch {i//BATCH_SIZE}: {e}")
+                time.sleep(3)
+                
+            except Exception as e:
+                if attempt == 2:
+                    raise RuntimeError(f"Failed after retries on batch {i//BATCH_SIZE}: {str(e)}")
+                time.sleep(3)
+                
+        if not batch_success:
+            raise RuntimeError(f"All retries exhausted for batch {i//BATCH_SIZE}")
             
-        except httpx.HTTPError as e:
-            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 503:
-                # Model loading on HF side, wait and retry
-                if attempt < 2:
-                    time.sleep(5)
-                    continue
-            raise RuntimeError(f"HF API error: {e}")
-            
-        except Exception as e:
-            if attempt == 2:
-                raise RuntimeError(f"Failed after retries: {str(e)}")
-            time.sleep(3)
-    
-    raise RuntimeError("All retries exhausted")
+    return np.array(all_embeddings)
 
 
 def _get_embeddings_local(texts: List[str]) -> np.ndarray:
