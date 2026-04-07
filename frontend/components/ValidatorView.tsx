@@ -73,25 +73,25 @@ const VERDICT_CONFIG: Record<
 > = {
   MET: {
     label: "Met",
-    color: "text-emerald-400",
+    color: "text-emerald-600 dark:text-emerald-400",
     bg: "bg-emerald-500/10 border-emerald-500/30",
     icon: <CheckCircle2 size={12} />,
   },
   MET_BUT_VAGUE: {
     label: "Met (Vague)",
-    color: "text-amber-400",
+    color: "text-amber-600 dark:text-amber-400",
     bg: "bg-amber-500/10 border-amber-500/30",
     icon: <AlertTriangle size={12} />,
   },
   PARTIAL: {
     label: "Partial",
-    color: "text-blue-400",
-    bg: "bg-blue-500/10 border-blue-500/30",
+    color: "text-neutral-600 dark:text-neutral-400",
+    bg: "bg-neutral-500/10 border-neutral-500/30",
     icon: <Activity size={12} />,
   },
   NOT_MET: {
     label: "Not Met",
-    color: "text-red-400",
+    color: "text-red-600 dark:text-red-400",
     bg: "bg-red-500/10 border-red-500/30",
     icon: <XCircle size={12} />,
   },
@@ -103,18 +103,18 @@ const RISK_CONFIG: Record<
 > = {
   DISQUALIFYING: {
     label: "Disqualifying",
-    color: "text-red-400",
+    color: "text-red-600 dark:text-red-400",
     bg: "bg-red-500/10 border-red-500/30",
   },
   HIGH_RISK: {
     label: "High Risk",
-    color: "text-orange-400",
+    color: "text-orange-600 dark:text-orange-400",
     bg: "bg-orange-500/10 border-orange-500/30",
   },
   STANDARD: {
     label: "Standard",
-    color: "text-slate-400",
-    bg: "bg-slate-500/10 border-slate-500/30",
+    color: "text-neutral-500 dark:text-neutral-400",
+    bg: "bg-neutral-500/10 border-neutral-500/30",
   },
 };
 
@@ -132,12 +132,12 @@ function ScoreBar({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between items-center">
-        <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+        <span className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold">
           {label}
         </span>
-        <span className="text-xs font-bold text-slate-300">{value}%</span>
+        <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{value}%</span>
       </div>
-      <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${value}%` }}
@@ -222,10 +222,10 @@ function UploadZone({
       className={cn(
         "relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200",
         dragging
-          ? "border-violet-500 bg-violet-500/10"
+          ? "border-neutral-900 bg-neutral-100 dark:border-white dark:bg-neutral-800"
           : file
-          ? "border-emerald-500/50 bg-emerald-500/5"
-          : "border-slate-700 hover:border-violet-500/60 hover:bg-violet-500/5",
+          ? "border-neutral-900 bg-neutral-50 dark:border-white dark:bg-neutral-900"
+          : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900",
         disabled && "opacity-50 cursor-not-allowed"
       )}
     >
@@ -245,7 +245,7 @@ function UploadZone({
         <span
           className={cn(
             "text-3xl transition-colors",
-            file ? "text-emerald-400" : "text-slate-500"
+            file ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-neutral-500"
           )}
         >
           {file ? <FileCheck size={36} /> : icon}
@@ -253,12 +253,12 @@ function UploadZone({
         <p
           className={cn(
             "text-sm font-semibold",
-            file ? "text-emerald-300" : "text-slate-300"
+            file ? "text-neutral-900 dark:text-white" : "text-neutral-600 dark:text-neutral-400"
           )}
         >
           {file ? file.name : label}
         </p>
-        <p className="text-xs text-slate-500">{hint}</p>
+        <p className="text-xs text-neutral-500">{hint}</p>
       </div>
     </div>
   );
@@ -270,38 +270,38 @@ function ResultRow({ r }: { r: ResultItem }) {
     r.semantic_similarity >= 75
       ? "bg-emerald-500"
       : r.semantic_similarity >= 50
-      ? "bg-blue-500"
+      ? "bg-amber-500"
       : "bg-red-500";
   const compColor =
     r.compliance_score >= 75
       ? "bg-emerald-500"
       : r.compliance_score >= 50
-      ? "bg-blue-500"
+      ? "bg-amber-500"
       : "bg-red-500";
 
   return (
     <>
       <tr
-        className="border-b border-slate-800/60 hover:bg-slate-800/30 transition-colors cursor-pointer"
+        className="border-b border-neutral-200 dark:border-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors cursor-pointer"
         onClick={() => setExpanded((p) => !p)}
       >
-        <td className="py-3 px-4 text-slate-500 font-mono text-xs">{r.id}</td>
+        <td className="py-3 px-4 text-neutral-500 font-mono text-xs">{r.id}</td>
         <td className="py-3 px-4">
-          <p className="text-sm font-medium text-slate-200 leading-snug line-clamp-2">
+          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-200 leading-snug line-clamp-2">
             {r.requirement}
           </p>
           <div className="flex flex-wrap gap-1 mt-1.5">
             <RiskBadge risk={r.risk_level ?? "STANDARD"} />
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border text-slate-400 bg-slate-500/10 border-slate-500/30">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700">
               {r.category || "General"}
             </span>
             {r.is_vague && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border text-amber-400 bg-amber-500/10 border-amber-500/30">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30">
                 ⚠ Vague
               </span>
             )}
             {r.has_conditions && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border text-sky-400 bg-sky-500/10 border-sky-500/30">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border text-neutral-600 dark:text-neutral-400 bg-neutral-500/10 border-neutral-500/30">
                 🔵 Conditional
               </span>
             )}
@@ -326,9 +326,9 @@ function ResultRow({ r }: { r: ResultItem }) {
         </td>
         <td className="py-3 px-4 text-right">
           {expanded ? (
-            <ChevronUp size={14} className="text-slate-500 ml-auto" />
+            <ChevronUp size={14} className="text-neutral-500 ml-auto" />
           ) : (
-            <ChevronDown size={14} className="text-slate-500 ml-auto" />
+            <ChevronDown size={14} className="text-neutral-500 ml-auto" />
           )}
         </td>
       </tr>
@@ -337,7 +337,7 @@ function ResultRow({ r }: { r: ResultItem }) {
           <tr>
             <td
               colSpan={5}
-              className="bg-slate-900/60 border-b border-slate-800/60"
+              className="bg-neutral-50/50 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800"
             >
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -347,24 +347,24 @@ function ResultRow({ r }: { r: ResultItem }) {
               >
                 {r.best_match_excerpt && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mb-1">
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-semibold mb-1">
                       Match Excerpt
                     </p>
-                    <p className="text-sm text-slate-400 italic leading-relaxed border-l-2 border-violet-500/40 pl-3">
+                    <p className="text-sm text-neutral-600 dark:text-neutral-400 italic leading-relaxed border-l-2 border-neutral-300 dark:border-neutral-600 pl-3">
                       &ldquo;{r.best_match_excerpt}&rdquo;
                     </p>
                   </div>
                 )}
                 {r.is_vague && r.hedge_phrases_found?.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-amber-500 font-semibold mb-1">
+                    <p className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-500 font-semibold mb-1">
                       Hedge Phrases
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {r.hedge_phrases_found.map((p, i) => (
                         <span
                           key={i}
-                          className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded text-amber-300 text-xs italic"
+                          className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded text-amber-700 dark:text-amber-300 text-xs italic"
                         >
                           &ldquo;{p}&rdquo;
                         </span>
@@ -374,14 +374,14 @@ function ResultRow({ r }: { r: ResultItem }) {
                 )}
                 {r.has_conditions && r.conditions_found?.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-sky-500 font-semibold mb-1">
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-600 dark:text-neutral-500 font-semibold mb-1">
                       Conditions Detected
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {r.conditions_found.map((c, i) => (
                         <span
                           key={i}
-                          className="px-2 py-0.5 bg-sky-500/10 border border-sky-500/30 rounded text-sky-300 text-xs italic"
+                          className="px-2 py-0.5 bg-neutral-500/10 border border-neutral-500/30 rounded text-neutral-700 dark:text-neutral-300 text-xs italic"
                         >
                           &ldquo;{c}&rdquo;
                         </span>
@@ -392,7 +392,7 @@ function ResultRow({ r }: { r: ResultItem }) {
                 {!r.best_match_excerpt &&
                   !r.is_vague &&
                   !r.has_conditions && (
-                    <p className="text-xs text-slate-600 italic">
+                    <p className="text-xs text-neutral-500 italic">
                       No additional details available.
                     </p>
                   )}
@@ -499,23 +499,20 @@ export default function ValidatorView() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-[#0a0c14] text-slate-100">
+    <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
       {/* ─── Header ─── */}
-      <header className="border-b border-slate-800/60 bg-[#0d0f1a]/80 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
-              <FileText size={14} className="text-white" />
+            <div className="w-7 h-7 rounded-lg bg-neutral-900 dark:bg-white flex items-center justify-center">
+              <FileText size={14} className="text-white dark:text-neutral-900" />
             </div>
-            <span className="font-bold text-sm tracking-tight text-white">
+            <span className="font-bold text-sm tracking-tight text-neutral-900 dark:text-white">
               TenderLens
             </span>
-            <span className="text-xs text-slate-600 hidden sm:inline">
-              Free Edition
-            </span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Semantic AI · Offline
           </div>
         </div>
@@ -524,10 +521,10 @@ export default function ValidatorView() {
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
         {/* ─── Page title ─── */}
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
             Compliance Validator
           </h2>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
             Upload an RFP and vendor proposal to validate compliance with
             semantic AI matching.
           </p>
@@ -540,13 +537,13 @@ export default function ValidatorView() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="bg-slate-900/60 border border-slate-800/60 rounded-2xl p-5 space-y-4"
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 space-y-4 shadow-sm"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center text-xs font-bold text-white">
+              <div className="w-6 h-6 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center text-xs font-bold text-white dark:text-neutral-900">
                 1
               </div>
-              <h3 className="font-semibold text-white">Upload RFP Document</h3>
+              <h3 className="font-semibold text-neutral-900 dark:text-white">Upload RFP Document</h3>
             </div>
             <UploadZone
               id="rfp-file"
@@ -560,7 +557,7 @@ export default function ValidatorView() {
               id="rfp-btn"
               onClick={uploadRFP}
               disabled={rfpStatus.type === "loading"}
-              className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
             >
               {rfpStatus.type === "loading" ? (
                 <>
@@ -576,10 +573,10 @@ export default function ValidatorView() {
                 className={cn(
                   "text-xs",
                   rfpStatus.type === "ok"
-                    ? "text-emerald-400"
+                    ? "text-emerald-600 dark:text-emerald-400"
                     : rfpStatus.type === "err"
-                    ? "text-red-400"
-                    : "text-slate-400"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-neutral-600 dark:text-neutral-400"
                 )}
               >
                 {rfpStatus.msg}
@@ -592,21 +589,21 @@ export default function ValidatorView() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-slate-900/60 border border-slate-800/60 rounded-2xl p-5 space-y-4"
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 space-y-4 shadow-sm"
           >
             <div className="flex items-center gap-2.5">
               <div
                 className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white",
-                  rfpDone ? "bg-violet-600" : "bg-slate-700"
+                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
+                  rfpDone ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "bg-neutral-200 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-500"
                 )}
               >
                 2
               </div>
               <h3
                 className={cn(
-                  "font-semibold",
-                  rfpDone ? "text-white" : "text-slate-500"
+                  "font-semibold transition-colors",
+                  rfpDone ? "text-neutral-900 dark:text-white" : "text-neutral-500 dark:text-neutral-500"
                 )}
               >
                 Upload Vendor Proposal
@@ -625,7 +622,7 @@ export default function ValidatorView() {
               id="proposal-btn"
               onClick={validateProposal}
               disabled={!rfpDone || propStatus.type === "loading"}
-              className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
             >
               {propStatus.type === "loading" ? (
                 <>
@@ -641,10 +638,10 @@ export default function ValidatorView() {
                 className={cn(
                   "text-xs",
                   propStatus.type === "ok"
-                    ? "text-emerald-400"
+                    ? "text-emerald-600 dark:text-emerald-400"
                     : propStatus.type === "err"
-                    ? "text-red-400"
-                    : "text-slate-400"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-neutral-600 dark:text-neutral-400"
                 )}
               >
                 {propStatus.msg}
@@ -667,12 +664,12 @@ export default function ValidatorView() {
               {results.overall_status === "DISQUALIFIED" ? (
                 <div className="bg-red-500/10 border border-red-500/40 rounded-2xl p-4">
                   <div className="flex items-start gap-3">
-                    <ShieldAlert className="text-red-400 mt-0.5 shrink-0" size={20} />
+                    <ShieldAlert className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" size={20} />
                     <div>
-                      <h4 className="text-red-300 font-bold text-sm">
+                      <h4 className="text-red-700 dark:text-red-300 font-bold text-sm">
                         ⛔ Vendor DISQUALIFIED
                       </h4>
-                      <p className="text-red-400/80 text-xs mt-1">
+                      <p className="text-red-600/80 dark:text-red-400/80 text-xs mt-1">
                         The following mandatory requirements were not met.
                         Failure on any DISQUALIFYING requirement is grounds for
                         immediate bid rejection.
@@ -681,7 +678,7 @@ export default function ValidatorView() {
                         {results.disqualifying_failures.map((f) => (
                           <li
                             key={f.id}
-                            className="text-xs text-red-300/80 before:content-['✗'] before:mr-2 before:text-red-400"
+                            className="text-xs text-red-600/90 dark:text-red-300/80 before:content-['✗'] before:mr-2 before:text-red-500 dark:before:text-red-400"
                           >
                             [Req #{f.id}] {f.requirement} —{" "}
                             {f.verdict.replace("_", " ")}
@@ -692,9 +689,9 @@ export default function ValidatorView() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-emerald-500/8 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3">
-                  <ShieldCheck className="text-emerald-400 shrink-0" size={20} />
-                  <p className="text-emerald-300 text-sm font-semibold">
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3">
+                  <ShieldCheck className="text-emerald-500 dark:text-emerald-400 shrink-0" size={20} />
+                  <p className="text-emerald-700 dark:text-emerald-300 text-sm font-semibold">
                     ✅ Vendor passed all disqualifying checks. Full compliance
                     review below.
                   </p>
@@ -707,39 +704,39 @@ export default function ValidatorView() {
                   {
                     label: "Total",
                     val: results.summary.total,
-                    color: "text-slate-200",
+                    color: "text-neutral-900 dark:text-white",
                   },
                   {
                     label: "Met",
                     val: results.summary.met,
-                    color: "text-emerald-400",
+                    color: "text-emerald-600 dark:text-emerald-400",
                   },
                   {
                     label: "Vague",
                     val: results.summary.met_but_vague,
-                    color: "text-amber-400",
+                    color: "text-amber-600 dark:text-amber-400",
                   },
                   {
                     label: "Partial",
                     val: results.summary.partial,
-                    color: "text-blue-400",
+                    color: "text-neutral-600 dark:text-neutral-400",
                   },
                   {
                     label: "Not Met",
                     val: results.summary.not_met,
-                    color: "text-red-400",
+                    color: "text-red-600 dark:text-red-400",
                   },
                   {
                     label: "Conditional",
                     val: results.summary.with_conditions,
-                    color: "text-sky-400",
+                    color: "text-neutral-500 dark:text-neutral-300",
                   },
                 ].map((t) => (
                   <div
                     key={t.label}
-                    className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-3 flex flex-col gap-1"
+                    className="bg-white dark:bg-neutral-900 shadow-sm border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 flex flex-col gap-1"
                   >
-                    <span className="text-xs text-slate-500 font-medium">
+                    <span className="text-xs text-neutral-500 font-medium">
                       {t.label}
                     </span>
                     <motion.span
@@ -754,11 +751,11 @@ export default function ValidatorView() {
               </div>
 
               {/* Compliance Score */}
-              <div className="bg-slate-900/60 border border-slate-800/60 rounded-2xl p-5">
+              <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-sm rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Info size={14} className="text-slate-500" />
-                    <span className="text-sm font-semibold text-slate-300">
+                    <Info size={14} className="text-neutral-400" />
+                    <span className="text-sm font-semibold text-neutral-900 dark:text-white">
                       Overall Compliance Score
                     </span>
                   </div>
@@ -766,16 +763,16 @@ export default function ValidatorView() {
                     className={cn(
                       "text-2xl font-bold",
                       complianceScore >= 70
-                        ? "text-emerald-400"
+                        ? "text-emerald-600 dark:text-emerald-400"
                         : complianceScore >= 50
-                        ? "text-amber-400"
-                        : "text-red-400"
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-red-600 dark:text-red-400"
                     )}
                   >
                     {complianceScore}%
                   </span>
                 </div>
-                <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-2.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${complianceScore}%` }}
@@ -801,7 +798,7 @@ export default function ValidatorView() {
                   id="dl-csv"
                   href={`${API_BASE}/download-csv`}
                   download="compliance_report.csv"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-violet-500/50 text-slate-200 text-sm font-semibold transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 text-neutral-900 dark:text-neutral-200 text-sm font-semibold transition-all shadow-sm"
                 >
                   <Download size={14} />
                   Download CSV
@@ -810,41 +807,41 @@ export default function ValidatorView() {
                   id="dl-pdf"
                   href={`${API_BASE}/download-pdf`}
                   download="compliance_report.pdf"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/40 hover:border-violet-500/70 text-violet-300 text-sm font-semibold transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-semibold transition-all shadow-sm"
                 >
                   <FileText size={14} />
                   Download PDF Report
                 </a>
-                <span className="text-xs text-slate-600 ml-1">
+                <span className="text-xs text-neutral-500 ml-1">
                   {results.results.length} requirements analyzed ·{" "}
                   {new Date().toLocaleTimeString()}
                 </span>
               </div>
 
               {/* Results Table */}
-              <div className="bg-slate-900/60 border border-slate-800/60 rounded-2xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-slate-800/60 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-300">
+              <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+                <div className="px-5 py-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-200">
                     Compliance Results
                   </span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-neutral-500">
                     {results.results.length} requirements · click row to expand
                   </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-800/40">
-                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-slate-500 font-semibold w-10">
+                      <tr className="bg-neutral-100/50 dark:bg-neutral-800/40">
+                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-neutral-500 font-semibold w-10">
                           #
                         </th>
-                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-slate-500 font-semibold min-w-[260px]">
+                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-neutral-500 font-semibold min-w-[260px]">
                           Requirement
                         </th>
-                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-neutral-500 font-semibold">
                           Verdict
                         </th>
-                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-slate-500 font-semibold min-w-[130px]">
+                        <th className="text-left py-2.5 px-4 text-[10px] uppercase tracking-widest text-neutral-500 font-semibold min-w-[130px]">
                           Scores
                         </th>
                         <th className="py-2.5 px-4 w-6" />

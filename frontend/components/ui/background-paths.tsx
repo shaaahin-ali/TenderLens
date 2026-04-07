@@ -39,7 +39,8 @@ function FloatingPaths({ position }: { position: number }) {
               pathOffset: [0, 1, 0],
             }}
             transition={{
-              duration: 20 + Math.random() * 10,
+              // Deterministic duration per path avoids eslint "impure function" warnings.
+              duration: 20 + (path.id % 10) * 0.8,
               repeat: Number.POSITIVE_INFINITY,
               ease: "linear",
             }}
