@@ -1,66 +1,136 @@
-# Tender Compliance Validator (Free & Offline Edition)
+# TenderLens
 
-A tool to extract mandatory requirements from RFP documents and semantic-match them against vendor proposals.
+AI-powered tender compliance validator — because manually checking 100-page RFPs against vendor proposals is nobody's idea of fun.
 
-> **Checkpoint 3 — Fully local, free, and offline processing.**
-> - Reverted to keyword extraction (100% reliable, no API limits)
-> - Added local semantic matching using `sentence-transformers` (Free AI)
+## The Problem
 
----
+Procurement teams spend 20-30 hours on every tender manually cross-referencing requirements with vendor submissions. It's repetitive, inconsistent, and someone always misses that critical compliance clause hidden on page 47. The result? Bad vendor picks, compliance gaps, and pulled all-nighters before deadlines.
 
-## What it does right now
+## The Solution
 
-1. **Step 1:** Upload an RFP PDF. The system extracts logic-based mandatory requirements (lines with "must", "shall", etc.) and auto-assigns basic categories (Technical, Legal, etc.).
-2. **Step 2:** Upload a vendor proposal PDF. The system uses a local AI embedding model (`all-MiniLM-L6-v2`) to perform semantic matching. It finds the closest match for each requirement even if paraphrased, and scores it as Met, Partial, or Missing.
+TenderLens automates the grunt work. Upload an RFP PDF and a vendor proposal, get instant compliance scoring with semantic matching not just keyword hunting .
 
-Everything runs locally on your machine. **No API keys required.**
+**Key features:**
 
----
+- **Auto-extracts** mandatory requirements from RFPs (must, shall, required, etc.)
+- **Semantic matching** using ML embeddings understands paraphrasing, not just exact keywords
+- **Compliance scoring** — Met, Partial, Not Met with confidence percentages
+- **Vagueness detection** — flags hedged language like "we aim to" or "ideally"
+- **Report generation** — clean PDF/CSV exports for stakeholders
+- **Lenient vs Strict modes** — adjust scoring sensitivity based on procurement needs
 
-## Setup
+## Tech Stack
 
-**1. Install Python dependencies**
+**Backend:**
+
+- Python 3.11+
+- FastAPI (async API framework)
+- Hugging Face Inference API (for zero-memory embeddings)
+  - *Optional constraint local fallbacks with sentence-transformers*
+- pdfplumber (PDF text extraction)
+- ReportLab (PDF report generation)
+- NumPy (similarity computations)
+
+**Frontend:**
+
+- Next.js 14 (React framework)
+- TypeScript
+- Tailwind CSS
+- Framer Motion (animations)
+- Lucide React (icons)
+
+**Deployment:**
+
+- Backend: Render (Gunicorn + Uvicorn workers)
+- Frontend: Vercel
+
+## Setup Instructions
+
+### 1. Clone the repo
+
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/shaaahin-ali/TenderLens.git
+cd TenderLens
 ```
 
-**2. Run the server**
+### 2. Backend setup
+
 ```bash
+# Create virtual environment
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Mac/Linux
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start dev server
 uvicorn app:app --reload
 ```
 
-**3. Open in browser**
+Backend runs at `http://127.0.0.1:8000`
+
+### 3. Frontend setup
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
-http://localhost:8000
-```
-*(Note: The first time you validate a proposal, it will take 10-15 seconds to download the 90MB local AI model. After that, it's instant and offline).*
 
----
+Frontend runs at `http://localhost:3000`
 
-## How to test it
+### 4. Environment variables
 
-Create two text files and save them as PDFs:
-
-**Sample RFP:**
-"The vendor must provide 24/7 technical support."
-
-**Sample Proposal:**
-"Our helpdesk is operational round the clock."
-
-Because the matcher uses semantic embeddings instead of simple text search, it will successfully link "24/7" with "round the clock" and mark it as **Met**.
-
----
-
-## Project structure
+Backend (`.env` in root):
 
 ```
-tender-validator/
-├── app.py          <- FastAPI server
-├── extractor.py    <- Keyword-based requirement extraction (Free, Offline)
-├── matcher.py      <- Semantic matching using sentence-transformers (Free, Offline)
-├── utils.py        <- PDF reading
-├── data/           <- Uploaded PDFs go here (git ignored)
-├── static/
-|   └── index.html  <- Simple 2-step web UI
+CORS_ORIGINS=http://localhost:3000
+HF_API_KEY=your_huggingface_key_here
+```
+
+Frontend (`frontend/.env.local`):
+
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+## How to use
+
+1. **Upload RFP** → Click "Extract Requirements"
+2. **Upload Vendor Proposal** → Click "Validate Proposal"
+3. **Review results** → Check compliance scores, download reports
+
+> Uses Hugging Face Inference API to compute embeddings at lightning speed with zero RAM overhead.
+
+## Project Structure
+
+```
+TenderLens/
+├── app.py              # FastAPI main entry
+├── matcher.py          # Semantic matching logic
+├── embeddings.py       # Vector embedding handler
+├── extractor.py        # RFP requirement extraction
+├── conditions.py       # Conditional requirement parsing
+├── hedge.py            # Vague language detection
+├── insights.py         # Analytics & scoring
+├── reporter.py         # PDF/CSV report generation
+├── frontend/           # Next.js app
+│   ├── app/
+│   └── components/
 └── requirements.txt
 ```
+
+## Demo
+
+Live: [https://tender-lens.vercel.app/]
+
+Backend: [https://tenderlens-rhtk.onrender.com]
+
+---
+
+Built this after watching friends in procurement suffer through manual vendor checks. Figured AI could do it better.

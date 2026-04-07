@@ -4,8 +4,8 @@
 # Install dependencies (if not already installed)
 pip install -r requirements.txt
 
-# Download sentence transformer model cache (optional - speeds up first request)
-# python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+# Hugging Face Inference API is used for Embeddings to save RAM
+# Make sure HF_API_KEY is set in your Render environment variables
 
 # Start the FastAPI application with gunicorn
 # Using uvicorn workers for async support
